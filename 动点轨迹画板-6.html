@@ -1,0 +1,847 @@
+<!DOCTYPE html><html lang="zh"><head><meta charset="utf-8"><title>动点轨迹画板</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{--bg:#fbfbf8;--pn:#f1f1ec;--fg:#1d2433;--mu:#6c7385;--ln:#dcdcd4;--gr:#e8e8e0;--ac:#1f5eff;--mx:#d92d3a;--mn:#0d9356;--or:#e08a00;--au:#8a3ffc;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#15181f;--pn:#1c2029;--fg:#e8eaf0;--mu:#99a1b3;--ln:#323847;--gr:#232834;--ac:#6f9bff;--mx:#ff6b75;--mn:#3fd48f;--or:#ffb43a;--au:#b794ff}}
+:root[data-theme=dark]{--bg:#15181f;--pn:#1c2029;--fg:#e8eaf0;--mu:#99a1b3;--ln:#323847;--gr:#232834;--ac:#6f9bff;--mx:#ff6b75;--mn:#3fd48f;--or:#ffb43a;--au:#b794ff}
+*{box-sizing:border-box}html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 "PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif}
+main{display:flex;flex-direction:column;min-height:100%}
+#st{position:relative;height:46vh;min-height:270px;border-bottom:1px solid var(--ln);touch-action:none}
+canvas{width:100%;height:100%;display:block;cursor:grab}
+#rd{position:absolute;left:12px;top:10px;font:600 15px ui-monospace,Menlo,monospace;pointer-events:none}
+#zb{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px}
+#zb button{width:34px;height:34px;padding:0;font-size:18px}
+#pn{background:var(--pn);padding:14px 16px 20px;flex:1}
+textarea{width:100%;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--ln);border-radius:8px;padding:10px;resize:vertical}
+textarea:focus,button:focus-visible,input:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
+button{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--ln);border-radius:8px;padding:7px 12px;cursor:pointer}
+button.go{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600;width:100%;padding:11px;margin-top:8px}
+.ch{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.ch button{font-size:13px;padding:5px 10px;color:var(--mu)}
+.ct{display:flex;align-items:center;gap:10px;margin:6px 0 12px}.ct input{flex:1;min-width:0;accent-color:var(--ac)}.ct span{color:var(--mu);font-size:13px}
+#rs{border-top:1px solid var(--ln);padding-top:12px;font-size:14px}
+#rs p{margin:0 0 8px}#rs .k{color:var(--mu)}#rs .e{color:var(--mx)}
+#rs button.x{display:block;width:100%;text-align:left;margin-bottom:6px;font-variant-numeric:tabular-nums}
+.mx{border-left:4px solid var(--mx)!important}.mn{border-left:4px solid var(--mn)!important}
+@media(min-width:860px){main{flex-direction:row;height:100%}#st{flex:1;height:100%;border:0;border-right:1px solid var(--ln)}#pn{flex:0 0 400px;overflow:auto}}
+.fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1.15;margin:0 3px}.fr>span:first-child{border-bottom:1.5px solid currentColor;padding:0 3px}.rt>span{border-top:1.5px solid currentColor;padding:0 1px}#rs .k b,.k{font-weight:400}
+.rt{display:inline-block;line-height:1.25}.pc{padding-left:20px;margin:8px 0;line-height:1.9}.pc li{margin-bottom:6px}summary{cursor:pointer;margin:6px 0}
+[hidden]{display:none!important}.ph{display:flex;gap:8px;margin-bottom:10px}.ph button{flex:1}#pv{max-width:100%;max-height:150px;border-radius:8px;margin:6px 0;display:block}#ps{margin:6px 0;font-size:13px}#ps.e{color:var(--mx)}#pls button{display:block;width:100%;text-align:left;margin-bottom:6px;font-size:13px}#cfg{margin:8px 0;font-size:13px}#cfg input{width:100%;margin:4px 0;font:inherit;padding:6px;border:1px solid var(--ln);border-radius:6px;background:var(--bg);color:inherit}
+</style></head><body><main>
+<div id="st"><canvas id="cv"></canvas><div id="rd"></div><div id="zb"><button id="zi" aria-label="放大">＋</button><button id="zo" aria-label="缩小">－</button><button id="zf" aria-label="适应窗口">⌂</button></div></div>
+<div id="pn">
+<div class="ct"><button id="pl" aria-label="播放/暂停">⏸</button><input type="range" id="pr" min="0" max="1000" value="0" aria-label="主点位置"><span id="lb2" style="display:none">副点</span><input type="range" id="pr2" min="0" max="1000" value="0" style="display:none;max-width:90px" aria-label="副点位置"><span>速度</span><input type="range" id="sp" min="0.2" max="3" step="0.1" value="1" style="max-width:90px" aria-label="速度"></div>
+<div class="ph"><button id="cam">📷 拍照识题</button><button id="alb">🖼 相册上传</button></div><input type="file" id="f1" accept="image/*" capture="environment" hidden><input type="file" id="f2" accept="image/*" hidden><img id="pv" hidden alt="题目图片"><div id="ps" class="k"></div><div id="pls"></div>
+<details id="cfg"><summary>识图设置（智谱 API Key）</summary><input id="ak" type="password" placeholder="智谱 API Key（只保存在本机浏览器）" autocomplete="off"><input id="md" placeholder="模型名，默认 glm-4.1v-thinking-flash"></details>
+<textarea id="tx" rows="3" aria-label="运动描述"></textarea>
+<button class="go" id="go">生成并演示</button>
+<div class="ch" id="ch"></div>
+<div id="rs"></div>
+</div></main>
+<script>
+const $=i=>document.getElementById(i),cv=$('cv'),g=cv.getContext('2d');
+const FN='asin acos atan sinh cosh tanh sin cos tan sqrt abs ln log exp'.split(' '),FR=/asin|acos|atan|sinh|cosh|tanh|sin|cos|tan|sqrt|abs|exp/g;
+const M=Object.assign(Object.create(Math),{ln:Math.log,log:Math.log10});
+const f3=v=>String(+v.toFixed(3)),esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const ds=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+const SQF=[];for(let n=2;n<60;n++){let ok=1;for(let k=2;k*k<=n;k++)if(n%(k*k)==0){ok=0;break}if(ok)SQF.push(n)}
+function ext(v){if(!isFinite(v))return null;const a=Math.abs(v),sg=v<0?-1:1,tol=2e-9*Math.max(1,a);if(a<tol)return{p:0,t:[],q:1};
+ for(let q=1;q<=36;q++){const p=Math.round(a*q);if(Math.abs(p/q-a)<tol)return{p:sg*p,t:[],q}}
+ for(let q=1;q<=12;q++){const p=Math.round(a*q/Math.PI);if(p&&Math.abs(p*Math.PI/q-a)<tol)return{p:0,t:[[sg*p,0]],q}}
+ let best=null,bs=1e9;
+ SQF.forEach(n=>{const s=Math.sqrt(n);for(let q=1;q<=24;q++)for(let r=-24;r<=24;r++){if(!r)continue;const p=Math.round(a*q-r*s);
+  if(Math.abs((p+r*s)/q-a)<tol){const sc=Math.abs(p)+Math.abs(r)+q+(p?1:0)+(n>30?2:0);if(sc<bs){bs=sc;best={p:sg*p,t:[[sg*r,n]],q}}}}});
+ if(best)return best;
+ const L=[2,3,5,6,7,10];
+ for(let i=0;i<L.length;i++)for(let j=i+1;j<L.length;j++){const s1=Math.sqrt(L[i]),s2=Math.sqrt(L[j]);for(let q=1;q<=12;q++)for(let r=-8;r<=8;r++){if(!r)continue;for(let w=-8;w<=8;w++){if(!w)continue;
+  if(Math.abs((r*s1+w*s2)/q-a)<tol){const sc=Math.abs(r)+Math.abs(w)+q+3;if(sc<bs){bs=sc;best={p:0,t:[[sg*r,L[i]],[sg*w,L[j]]],q}}}}}}
+ return best}
+function exs(e,h){if(!e)return null;const{p,t,q}=e,R=n=>n==0?'π':h?'<span class="rt">√<span>'+n+'</span></span>':'√'+n,pr=[];
+ if(p||!t.length)pr.push([p,String(Math.abs(p))]);t.forEach(([r,n])=>pr.push([r,(Math.abs(r)==1?'':Math.abs(r))+R(n)]));
+ pr.sort((x,y)=>(y[0]>0)-(x[0]>0));const nu=pr.map((x,i)=>(x[0]<0?'−':i?'+':'')+x[1]).join('');
+ return q==1?nu:h?'<span class="fr"><span>'+nu+'</span><span>'+q+'</span></span>':(pr.length>1?'('+nu+')':nu)+'/'+q}
+const fxs=v=>exs(ext(v))||f3(v),fxe=v=>{const e=ext(v);return e?exs(e,1):f3(v)};
+const fxh=v=>{const e=ext(v);if(!e)return f3(v);const t=exs(e,1);return(e.t.length||e.q>1)?t+'<span class="k"> ≈ '+f3(v)+'</span>':t};
+// ---- 表达式编译（只允许白名单符号）----
+function C(src,V=[]){
+ const T=[];
+ for(const m of src.toLowerCase().matchAll(/\d+\.?\d*|[a-z]+|[-+*\/^(),]|\S/g)){
+  let w=m[0];
+  if(/[a-z]/.test(w)){while(w){const f=FN.find(f=>w.startsWith(f));
+   if(f){T.push(['f','M.'+f]);w=w.slice(f.length)}
+   else if(w.startsWith('pi')){T.push(['n','Math.PI']);w=w.slice(2)}
+   else if(V.includes(w[0])){T.push(['n',w[0]]);w=w.slice(1)}
+   else if(w[0]=='e'){T.push(['n','Math.E']);w=w.slice(1)}
+   else throw Error('无法识别符号“'+w[0]+'”')}}
+  else if(/\d/.test(w))T.push(['n',w]);
+  else if(/[-+*\/^(),]/.test(w))T.push(['o',w]);
+  else throw Error('无法识别符号“'+w+'”')}
+ let s='',p=['o','('];
+ for(const k of T){const[a,v]=k,[pa,pv]=p;
+  if(pa=='f'&&v!='('){s+='('+v+')';p=['n',')'];continue}
+  if((pa=='n'||pv==')')&&(a=='n'||a=='f'||v=='('))s+='*';
+  if(v=='-'&&pa=='o'&&pv!=')'&&pv!='^'){s+='-1*';p=k;continue}
+  s+=v=='^'?'**':v;p=k}
+ let f;try{f=new Function(...V,'M','return '+s)}catch(e){throw Error('表达式无法解析：'+src)}
+ return(...a)=>f(...a,M)}
+const norm=s=>s.replace(/√/g,'sqrt ').replace(/[²³]/g,m=>m=='²'?'^2':'^3').replace(/[，、]/g,',').replace(/；/g,';').replace(/（/g,'(').replace(/）/g,')').replace(/＝/g,'=').replace(/[－—–]/g,'-').replace(/＋/g,'+').replace(/[×·∙⋅]/g,'*').replace(/÷/g,'/').replace(/[θαφ]/g,'t').replace(/π/g,'pi').replace(/垂直于?/g,'⊥').replace(/\r/g,'');
+const rg=(s,v)=>{const n='([-+]?[\\d.]+(?:pi)?)',m=s.match(new RegExp(n+'\\s*[≤<]=?\\s*'+v+'\\s*[≤<]=?\\s*'+n))||s.match(new RegExp(v+'\\s*∈\\s*[\\[(]\\s*([^,\\])]+),\\s*([^\\])]+)[\\])]'));return m?[C(m[1])(),C(m[2])()]:null};
+// ---- 隐式曲线 F(x,y)=0：行进方块 + 牛顿修正 ----
+function implicit(F,D,N){
+ const h=2*D/N,n1=N+1,v=new Float64Array(n1*n1),I=(i,j)=>i*n1+j;
+ for(let i=0;i<=N;i++)for(let j=0;j<=N;j++)v[I(i,j)]=F(-D+i*h,-D+j*h);
+ const adj=new Map(),P=new Map();
+ const E=(i,j,d)=>{const k=d+i+','+j;if(!P.has(k)){const[a,b]=d=='h'?[[i,j],[i+1,j]]:[[i,j],[i,j+1]],va=v[I(...a)],vb=v[I(...b)],u=va/(va-vb);P.set(k,[-D+(a[0]+(b[0]-a[0])*u)*h,-D+(a[1]+(b[1]-a[1])*u)*h])}return k};
+ const lk=(a,b)=>{(adj.get(a)||adj.set(a,[]).get(a)).push(b);(adj.get(b)||adj.set(b,[]).get(b)).push(a)};
+ for(let i=0;i<N;i++)for(let j=0;j<N;j++){
+  const a=v[I(i,j)]>0,b=v[I(i+1,j)]>0,c=v[I(i+1,j+1)]>0,d=v[I(i,j+1)]>0,r=[];
+  if(a!=b)r.push(E(i,j,'h'));if(b!=c)r.push(E(i+1,j,'v'));if(d!=c)r.push(E(i,j+1,'h'));if(a!=d)r.push(E(i,j,'v'));
+  if(r.length==2)lk(r[0],r[1]);else if(r.length==4){lk(r[0],r[1]);lk(r[2],r[3])}}
+ const seen=new Set(),out=[];
+ const walk=s=>{const l=[];let c=s,p=null;while(c&&!seen.has(c)){seen.add(c);l.push(P.get(c));const n=adj.get(c).find(k=>k!=p&&!seen.has(k));p=c;c=n}return l};
+ for(const[k,n]of adj)if(n.length==1&&!seen.has(k))out.push(walk(k));
+ for(const[k]of adj)if(!seen.has(k)){const l=walk(k);l.push(l[0]);out.push(l)}
+ const pol=p=>proj(F,p);
+ return out.map(l=>l.map(pol)).filter(l=>l.length>2)}
+function proj(F,p){for(let k=0;k<3;k++){const e=1e-6,f=F(p[0],p[1]),gx=(F(p[0]+e,p[1])-F(p[0]-e,p[1]))/2/e,gy=(F(p[0],p[1]+e)-F(p[0],p[1]-e))/2/e,m=gx*gx+gy*gy||1;if(isFinite(f/m))p=[p[0]-f*gx/m,p[1]-f*gy/m]}return p}
+const clip=(L,ok)=>{const o=[];L.forEach(l=>{let c=[];l.forEach(p=>{if(ok(p))c.push(p);else{if(c.length>1)o.push(c);c=[]}});if(c.length>1)o.push(c)});return o};
+function dens(pl,cl){const q=cl?[...pl,pl[0]]:pl;let L=0;for(let i=1;i<q.length;i++)L+=ds(q[i],q[i-1]);const st=L/1500||1,o=[];
+ for(let i=1;i<q.length;i++){const a=q[i-1],b=q[i],n=Math.max(1,Math.ceil(ds(a,b)/st));for(let k=0;k<n;k++)o.push([a[0]+(b[0]-a[0])*k/n,a[1]+(b[1]-a[1])*k/n])}
+ if(!cl)o.push(q[q.length-1]);return o}
+function build(lines,closed){const o=[];let s=0;closed=closed&&lines.length==1;
+ lines.forEach(l=>dens(l,closed).forEach((p,i)=>{if(o.length&&i)s+=ds([p[0],p[1]],[o[o.length-1].x,o[o.length-1].y]);o.push({x:p[0],y:p[1],s,b:i==0})}));
+ const L=s+(closed?ds([o[0].x,o[0].y],[o[o.length-1].x,o[o.length-1].y]):0);return{pts:o,L:L||1,closed}}
+// ---- 文字解析 ----
+function parse(raw){
+ const CMP=C;let s=norm(raw),pts={},used=new Set(),m;
+ s=s.replace(/([A-Z])\s*\(\s*([^(),]+?)\s*,\s*([^(),]+?)\s*\)/g,(w,n,a,b)=>{try{pts[n]=[C(a)(),C(b)()];return n}catch(e){return w}});
+ // 多动点检测与主动点选择（先收集，解析派生点后再严格检查）
+ const allMv=[...s.matchAll(/(?:动点|点)\s*([A-Z])|(?:([A-Z])\s*(?:为|是)[^,;。]*动点)/g)].map(k=>k[1]||k[2]).filter((v,i,a)=>v&&a.indexOf(v)===i);
+ if(/原点|[xy]\s*轴|平面直角坐标系/.test(s)&&!pts.O&&/(?<![A-Z])O(?![a-z])/.test(s))pts.O=[0,0];
+ {const lm=s.match(/y\s*=\s*([-+]?[\d.]*)\s*\*?\s*x\s*(?:([-+])\s*([\d.]+))?/),xa=s.match(/交\s*x\s*轴\s*于\s*(?:点)?\s*([A-Z])/),ya=s.match(/交\s*y\s*轴\s*于\s*(?:点)?\s*([A-Z])/);
+  if(lm&&xa&&ya){const k=lm[1]==''||lm[1]=='+'?1:lm[1]=='-'?-1:+lm[1],b=lm[3]?(lm[2]=='-'?-1:1)*+lm[3]:0;if(k&&!pts[xa[1]]&&!pts[ya[1]]){pts[xa[1]]=[-b/k,0];pts[ya[1]]=[0,b]}}}
+ const spm=s.match(/过\s*(?:点)?\s*([A-Z])\s*的?\s*直线[^,;。]*?(?:菱形|矩形|正方形|平行四边形|三角形|△)\s*([A-Z]{3,4})[^,;。]*?面积比\s*(?:为|是|=)?\s*(\d+)\s*[:：]\s*(\d+)/);
+ const det=/[A-Z]{2}\s*[:：]\s*[A-Z]{2}\s*=\s*\d|∥|平行于?|\/\/|折叠|翻折|对折|中点/.test(s);
+ let lc=null;
+ if(!det&&!/运动|移动|滑动|圆|轨迹/.test(s)){const pl=new Set([...s.matchAll(/(?:三角形|△|矩形|长方形|正方形|菱形|四边形)\s*([A-Z]{3,6})/g)].flatMap(k=>[...k[1]]));
+  for(const c of allMv){if(pl.has(c)||pts[c]||new RegExp(c+'\\s*(?:在|是|为)[^,;。]*?上').test(s))continue;
+   const m=s.match(new RegExp('(?<![A-Z])(?:'+c+'([A-Z])|([A-Z])'+c+')\\s*=\\s*([\\d.]+)(?![\\d.:：])'));if(m){lc={c,o:m[1]||m[2],r:+m[3]};break}}}
+ const fa=(()=>{const m=s.match(/(?:∠|角)\s*([A-Z])([A-Z])([A-Z])\s*=\s*([\d.]+)/);if(!m||pts[m[2]]||!/最大值|最小值|最值/.test(s)||/动点|运动|移动|在[^,;。]*?上|圆/.test(s)||/(?<![A-Z])[A-Z]{2}\s*=\s*[A-Z]{2}(?![A-Z])/.test(s))return null;
+ const[A,P,B]=[m[1],m[2],m[3]],sd=(x,y)=>{const k=s.match(new RegExp('(?<![A-Z])(?:'+x+y+'|'+y+x+')\\s*=\\s*([\\d.]+)'));return k?+k[1]:0},c=sd(A,B);
+ if(!c||sd(A,P)||sd(B,P)||pts[A]||pts[B])return null;return{P,A,B,th:+m[4]*Math.PI/180,c}})();
+ const stat=!fa&&!lc&&!spm&&!new RegExp('动点|运动|移动|滑动|'+(det?'':'在[^,;。]*?上|')+'[xy]\\s*[=²^]|圆|椭圆|抛物|双曲|曲线|轨迹|[ρr]\\s*=').test(s);
+ let mv=fa?fa.P:lc?lc.c:spm?'M':stat?'_':((s.match(/([A-Z])\s*(?:为|是)[^,;。]*动点/)||s.match(/动点\s*([A-Z])/)||s.match(/点\s*([A-Z])\s*(?:在|沿|从|是动点|为动点)/)||[])[1])||allMv[0]||'P';
+ delete pts[mv];if(fa){pts[fa.A]=[0,0];pts[fa.B]=[fa.c,0]}
+ let mv2=null;
+ const der=[],dyn=c=>c==mv||c==mv2||der.some(d=>d.n==c),known=c=>dyn(c)||pts[c],need=n=>{if(!known(n))throw Error('缺少点'+n+'的坐标，请写成 '+n+'(x,y) 或用几何关系定义（中点/垂足/对称点）')};
+ // env 支持单点或双点：env(p) 或 env(p1,p2)
+ const env=(p,p2)=>{const e={...pts,[mv]:p};if(mv2&&p2)e[mv2]=p2;der.forEach(d=>e[d.n]=d.f(e));return e};
+ const G=(n,p,p2)=>env(p,p2)[n];
+ const num=(r,d)=>{const k=s.match(r);return k?+k[1]:d},d2=c=>stat||dyn(c);
+ let rhN=null;{const rm=s.match(/菱形\s*([A-Z]{4})/);if(rm){rhN=rm[1];const[A,B,C,D]=[...rhN],am=s.match(/(?:∠|角)\s*([A-Z]{1,3})\s*=\s*([\d.]+)/),vx=am?(am[1].length==3?am[1][1]:am[1]):A,nv=t=>{try{return CMP(t)()}catch(e){return NaN}},sd2=(m=>m?nv(m[1]):NaN)(s.match(new RegExp('(?<![A-Z])(?:'+A+B+'|'+B+A+')\\s*=\\s*([0-9.]+(?:\\s*sqrt\\s*[0-9.]+)?|sqrt\\s*[0-9.]+)'))),
+  dgm=s.match(new RegExp('(?<![A-Z])(?:'+A+C+'|'+C+A+'|'+B+D+'|'+D+B+')\\s*=\\s*([0-9.]+(?:\\s*sqrt\\s*[0-9.]+)?)')),
+  dga=dgm&&!isNaN(sd2)?(as=>dgm[0].slice(0,2).includes(A)?Math.PI-2*as:2*as)(Math.asin(Math.min(1,nv(dgm[1])/(2*sd2)))):NaN,
+  th=am?+am[2]*Math.PI/180:dga,ta=rhN.indexOf(vx)%2==1?Math.PI-th:th,
+  rot=(v,a)=>[v[0]*Math.cos(a)-v[1]*Math.sin(a),v[0]*Math.sin(a)+v[1]*Math.cos(a)],ad=(p,q)=>[p[0]+q[0],p[1]+q[1]];
+  if(!pts[A])pts[A]=[0,0];
+  if(!(pts[B]&&pts[D])){if(isNaN(ta))throw Error('请给出菱形的一个内角，如“角A=60°”');
+   if(pts[D])pts[B]=ad(pts[A],rot([pts[D][0]-pts[A][0],pts[D][1]-pts[A][1]],-ta));
+   else{const a=pts[B]?ds(pts[A],pts[B]):(isNaN(sd2)?num(/边长\s*(?:为|=)?\s*([\d.]+)/,4):sd2),b=pts[B]||[pts[A][0]+a,pts[A][1]];pts[B]=b;pts[D]=ad(pts[A],rot([b[0]-pts[A][0],b[1]-pts[A][1]],ta))}}
+  pts[C]=pts[C]||[pts[B][0]+pts[D][0]-pts[A][0],pts[B][1]+pts[D][1]-pts[A][1]];[...rhN].forEach(c=>used.add(c))}}
+ let sqb=null,exP=[],ferm=null,eqa=null,sqax=null;
+ {const qm=s.match(/以\s*([A-Z])([A-Z])\s*为\s*(?:一)?边[^,;。]*?正方形\s*([A-Z]{4})/);
+  if(qm&&pts[qm[1]]&&pts[qm[2]]){const n4=[...qm[3]],i=n4.indexOf(qm[1]),j=n4.indexOf(qm[2]);
+   if(i>=0&&j>=0&&((i+1)%4==j||(j+1)%4==i)&&!n4.some(c=>c!=qm[1]&&c!=qm[2]&&pts[c])){
+    const k=(i+1)%4==j?i:j,a=n4[k],b=n4[(k+1)%4],c3=n4[(k+2)%4],d3=n4[(k+3)%4],P=pts[a],Q=pts[b],dx=Q[0]-P[0],dy=Q[1]-P[1],
+     rf=Object.entries(pts).find(([n])=>n!=a&&n!=b&&!n4.includes(n)),sg=rf&&(-dy*(rf[1][0]-P[0])+dx*(rf[1][1]-P[1]))<0?-1:1;
+    pts[c3]=[Q[0]-sg*dy,Q[1]+sg*dx];pts[d3]=[P[0]-sg*dy,P[1]+sg*dx];n4.forEach(c=>used.add(c));sqb={n:qm[3],base:[qm[1],qm[2]]};exP.push(qm[3])}}}
+ {const em=s.match(/等边三角形\s*([A-Z]{3})/);if(em&&s.search(/(?:三角形|△)\s*[A-Z]{3}/)==em.index+2&&![...em[1]].some(c=>pts[c]||c==mv)){const a=num(/边长\s*(?:为|=)?\s*([\d.]+)/,4),[x,y,z]=[...em[1]];pts[x]=[0,0];pts[y]=[a,0];pts[z]=[a/2,a*Math.sqrt(3)/2];[...em[1]].forEach(c=>used.add(c))}}
+ let foldFx=null;
+ {const fl=s.match(/沿\s*(?:直线)?\s*([A-Z])([A-Z])\s*(?:折叠|翻折|对折)/),fp=s.match(/使\s*(?:点)?\s*([A-Z])\s*(?:点)?\s*(?:与|和|跟)\s*(?:点)?\s*([A-Z])\s*(?:点)?\s*重合/);
+  if(fl&&fp){const[X,Y]=[fl[1],fl[2]],[P,Q]=[fp[1],fp[2]],sd={},rm=s.match(/(矩形|长方形|正方形)\s*([A-Z]{4})/);
+   for(const k of s.matchAll(/([A-Z])\s*(?:是|为|在)\s*(?:线段|边)?\s*([A-Z])([A-Z])\s*(?:边)?\s*上/g))sd[k[1]]=[k[2],k[3]];
+   if(rm&&![...rm[2]].every(c=>pts[c])){const[A,B,C,D]=[...rm[2]],ln=(x,y)=>{const k=s.match(new RegExp('(?<![A-Z])'+x+y+'\\s*=\\s*([\\d.]+)'))||s.match(new RegExp('(?<![A-Z])'+y+x+'\\s*=\\s*([\\d.]+)'));return k?+k[1]:0},
+    a=ln(A,B)||ln(C,D)||4,b=ln(A,D)||ln(B,C)||(rm[1]=='正方形'?a:6);
+    pts[A]=pts[A]||[0,0];pts[B]=pts[B]||[a,0];pts[C]=pts[C]||[a,b];pts[D]=pts[D]||[0,b];[...rm[2]].forEach(c=>used.add(c))}
+   const pb=(a,b,P,Q)=>e=>{const p=e[P],q=e[Q],A=e[a],B=e[b],dx=q[0]-p[0],dy=q[1]-p[1],ex=B[0]-A[0],ey=B[1]-A[1],t=((((p[0]+q[0])/2)-A[0])*dx+(((p[1]+q[1])/2)-A[1])*dy)/(ex*dx+ey*dy||1e-12);return[A[0]+t*ex,A[1]+t*ey]};
+   [X,Y].forEach(c=>{if(!pts[c]&&sd[c]){const[a,b]=sd[c];[P,Q,a,b].forEach(need);der.push({n:c,links:[[c,P],[c,Q],[X,Y]],fd:{t:'pb',P,Q,a,b},f:pb(a,b,P,Q)})}});
+   if(der.some(d=>d.fd&&d.fd.t=='pb'))foldFx=rm?{X,Y,P,Q,V:[...rm[2]],sd}:null}}
+ let trS=[],given=[];
+ if(stat||lc){const tm=s.match(/(?:三角形|△)\s*([A-Z]{3})/);
+  if(tm&&![...tm[1]].every(c=>pts[c]||der.some(d=>d.n==c))){const V=[...tm[1]],K=(x,y)=>[x,y].sort().join(''),L={},An={},fh=fxe,opp=v=>K(...V.filter(c=>c!=v)),adj=v=>V.filter(c=>c!=v).map(o=>K(v,o));
+   for(const k of s.matchAll(/(?<![A-Z])([A-Z])([A-Z])\s*=\s*((?:sqrt\s*)?[0-9.]+(?:\s*sqrt\s*[0-9.]+)?(?:\s*\/\s*[0-9.]+)?)/g)){try{if(V.includes(k[1])&&V.includes(k[2])&&k[1]!=k[2]){const kk=K(k[1],k[2]);L[kk]=C(k[3])();given.push(k[1]+k[2]+'='+fxs(L[kk]))}}catch(e){}}
+   for(const k of s.matchAll(/(?:∠|角)\s*([A-Z]{1,3})\s*=\s*([\d.]+)\s*(?:°|度)?/g)){const v=k[1].length==3?k[1][1]:k[1];if(V.includes(v)){An[v]=+k[2]*Math.PI/180;given.push('∠'+v+'='+k[2]+'°')}}
+   const EQ=[];for(const k of s.matchAll(/(?<![A-Z])([A-Z])([A-Z])\s*=\s*([A-Z])([A-Z])(?![A-Z])/g))if([k[1],k[2],k[3],k[4]].every(c=>V.includes(c))&&k[1]!=k[2]&&k[3]!=k[4]){EQ.push([K(k[1],k[2]),K(k[3],k[4])]);given.push(k[1]+k[2]+'='+k[3]+k[4])}
+   for(let it=0;it<5;it++){
+    EQ.forEach(([p,q])=>{if(L[p]!=null&&L[q]==null)L[q]=L[p];else if(L[q]!=null&&L[p]==null)L[p]=L[q];const v=[...p].find(c=>q.includes(c));if(!v||p==q)return;const bs=V.filter(c=>c!=v);
+     if(An[v]!=null&&!(bs[0] in An)&&!(bs[1] in An)){An[bs[0]]=An[bs[1]]=(Math.PI-An[v])/2;trS.push(['等腰三角形','∠'+bs[0]+' = ∠'+bs[1]+' = (180° − ∠'+v+')÷2 = '+f3(An[bs[0]]*180/Math.PI)+'°'])}
+     else if(An[v]==null&&(bs[0] in An)!=(bs[1] in An)){const g1=bs[0] in An?bs[0]:bs[1],g2=bs.find(c=>c!=g1);An[g2]=An[g1];trS.push(['等腰三角形','∠'+g2+' = ∠'+g1+' = '+f3(An[g1]*180/Math.PI)+'°'])}});
+    if(Object.keys(An).length==2){const u=V.find(c=>!(c in An));An[u]=Math.PI-Object.values(An).reduce((a,b)=>a+b);if(An[u]<=1e-9)throw Error('已知两角之和不小于180°，构不成三角形');trS.push(['内角和','∠'+u+' = 180° − '+V.filter(c=>c!=u).map(c=>'∠'+c).join(' − ')+' = '+f3(An[u]*180/Math.PI)+'°'])}
+    for(const v of V){if(!(v in An))continue;const[a1,a2]=adj(v),o=opp(v),c=Math.cos(An[v]),rt=Math.abs(c)<1e-9,pw=x=>fh(L[x])+'²';
+     if(L[a1]!=null&&L[a2]!=null&&L[o]==null){L[o]=Math.sqrt(L[a1]**2+L[a2]**2-2*L[a1]*L[a2]*c);
+      trS.push([rt?'勾股定理':'余弦定理',o+'² = '+(rt?a1+'² + '+a2+'² = '+pw(a1)+' + '+pw(a2):a1+'² + '+a2+'² − 2·'+a1+'·'+a2+'·cos'+v+' = '+pw(a1)+' + '+pw(a2)+' − 2·'+fh(L[a1])+'·'+fh(L[a2])+'·'+fh(c))+' = '+fh(L[o]**2)+'，所以 '+o+' = '+fh(L[o])])}
+     else if(L[o]!=null&&(L[a1]==null)!=(L[a2]==null)){const[u,sd]=L[a1]==null?[a1,a2]:[a2,a1],D=L[o]**2-L[sd]**2*(1-c*c),x=L[sd]*c+Math.sqrt(Math.max(D,0));
+      if(D<-1e-9||x<=1e-9)throw Error(rt?'数据矛盾：∠'+v+'是直角，'+o+'是斜边，应该比直角边'+sd+'长，但 '+o+'='+fxs(L[o])+'，'+sd+'='+fxs(L[sd])+'，这样的直角三角形不存在。请检查题目（例如把'+o+'与'+sd+'的数据对调，则 '+u+' = '+fxs(Math.sqrt(L[sd]**2-L[o]**2))+'）。':'数据矛盾：按已知的 ∠'+v+'、'+o+'、'+sd+'，这个三角形不存在，请检查题目数据。');
+      L[u]=x;trS.push([rt?'勾股定理':'余弦定理（解方程取正根）',rt?u+'² = '+o+'² − '+sd+'² = '+pw(o)+' − '+pw(sd)+' = '+fh(x*x)+'，所以 '+u+' = '+fh(x):o+'² = '+u+'² + '+sd+'² − 2·'+u+'·'+sd+'·cos'+v+'，解得 '+u+' = '+fh(x)])}}
+    if(V.every(v=>v in An)){const kv=V.find(v=>L[opp(v)]!=null);if(kv)V.forEach(w=>{if(L[opp(w)]==null){L[opp(w)]=L[opp(kv)]*Math.sin(An[w])/Math.sin(An[kv]);trS.push(['正弦定理',opp(w)+' = '+opp(kv)+'·sin'+w+'÷sin'+kv+' = '+fh(L[opp(w)])])}})}}
+   const[X,Y,Z]=V,xy=L[K(X,Y)],xz=L[K(X,Z)],yz=L[K(Y,Z)];
+   if(!(xy&&xz&&yz))throw Error('条件不足，确定不了这个三角形：请再给出足够的边或角（如三边、两边及夹角、一边两角）');
+   const cx=(xy*xy+xz*xz-yz*yz)/(2*xy*xz);if(Math.abs(cx)>=1)throw Error('这三条边长构不成三角形');
+   pts[X]=[0,0];pts[Y]=[xy,0];pts[Z]=[xz*cx,xz*Math.sqrt(1-cx*cx)];V.forEach(c=>used.add(c))}}
+ {const fm=s.match(/求\s*([A-Z])([A-Z])\s*\+\s*([A-Z])([A-Z])\s*\+\s*([A-Z])([A-Z])\s*的?\s*最小值/),t3=s.match(/(?:三角形|△)\s*([A-Z]{3})/);
+  if(fm&&t3&&stat){const P=fm[1],V=[...t3[1]];
+   if(fm[3]==P&&fm[5]==P&&!V.includes(P)&&V.every(c=>pts[c])&&[fm[2],fm[4],fm[6]].every(c=>V.includes(c))){
+    const Q=V.map(c=>pts[c]);let vx=null;
+    V.forEach((c,i)=>{const o=Q[i],p=Q[(i+1)%3],q=Q[(i+2)%3],cs=((p[0]-o[0])*(q[0]-o[0])+(p[1]-o[1])*(q[1]-o[1]))/(ds(o,p)*ds(o,q));if(cs<=-.5+1e-12)vx=c});
+    let x=vx?pts[vx]:[(Q[0][0]+Q[1][0]+Q[2][0])/3,(Q[0][1]+Q[1][1]+Q[2][1])/3];
+    if(!vx)for(let k=0;k<3000;k++){let sx=0,sy=0,sw=0;for(const q of Q){const d=Math.max(ds(x,q),1e-14);sx+=q[0]/d;sy+=q[1]/d;sw+=1/d}x=[sx/sw,sy/sw]}
+    pts[P]=x;used.add(P);ferm={P,V,vx}}}}
+ {const e3=s.match(/等边三角形\s*([A-Z]{3})/)||s.match(/(?:三角形|△)\s*([A-Z]{3})\s*(?:是|为)\s*等边三角形/);
+  if(e3){const V=[...e3[1]],kn=V.filter(c=>pts[c]),un=V.filter(c=>!pts[c]&&c!=mv);
+   if(kn.length==2&&un.length==1){const[a,b]=kn.map(c=>pts[c]),m=[(a[0]+b[0])/2,(a[1]+b[1])/2],d=ds(a,b),h=d*Math.sqrt(3)/2,nx=-(b[1]-a[1])/d,ny=(b[0]-a[0])/d,rf=Object.entries(pts).find(([n])=>!V.includes(n)),sg=rf?((rf[1][0]-m[0])*nx+(rf[1][1]-m[1])*ny>0?-1:1):1;
+    pts[un[0]]=[m[0]+sg*nx*h,m[1]+sg*ny*h];used.add(un[0]);exP.push(e3[1]);eqa={n:e3[1],apex:un[0],base:kn}}}}
+ const SL={};for(const k of s.matchAll(/(?<![A-Z])([A-Z])([A-Z])\s*=\s*([\d.]+)/g))SL[[k[1],k[2]].sort().join('')]=+k[3];
+ const tn=((s.match(/(?:三角形|△)\s*([A-Z]{3})/)||[])[1])||[...new Set(Object.keys(SL).join(''))].sort().join('');
+ if(tn.length==3&&![...tn].some(c=>pts[c]||c==mv)){const[n0,n1,n2]=[...tn],sk=(x,y)=>SL[[x,y].sort().join('')],c=sk(n0,n1),b=sk(n0,n2),a=sk(n1,n2);
+  if(c&&b&&a){const co=(b*b+c*c-a*a)/(2*b*c);if(Math.abs(co)>=1)throw Error('这三条边长构不成三角形');pts[n0]=[0,0];pts[n1]=[c,0];pts[n2]=[b*co,b*Math.sqrt(1-co*co)];[...tn].forEach(q=>used.add(q))}}
+ // 反射辅助函数：点C关于直线AB的对称点
+ const reflect=(C,A,B)=>{const dx=B[0]-A[0],dy=B[1]-A[1],l2=dx*dx+dy*dy||1e-12;
+  const t=((C[0]-A[0])*dx+(C[1]-A[1])*dy)/l2,px=A[0]+t*dx,py=A[1]+t*dy;
+  return[2*px-C[0],2*py-C[1]]};
+ // 点对称：关于点M
+ const pointReflect=(C,M)=>[2*M[0]-C[0],2*M[1]-C[1]];
+ const dfs=[];
+ for(const k of s.matchAll(/([A-Z])([A-Z])\s*⊥\s*([A-Z])([A-Z])\s*(?:于|交\s*[A-Z]{2}\s*的?(?:反向)?(?:延长线)?\s*于|,?\s*垂足\s*(?:为|是)?)\s*(?:点)?\s*([A-Z])/g))dfs.push({i:k.index,t:'f',k});
+ for(const k of s.matchAll(/([A-Z])\s*(?:为|是)\s*(?:线段)?\s*([A-Z])([A-Z])\s*的?\s*中点/g))dfs.push({i:k.index,t:'m',k});
+ // 对称点 / 折叠（关于直线或点）
+ for(const k of s.matchAll(/([A-Z])\s*(?:为|是)\s*(?:点)?\s*([A-Z])\s*关于\s*(?:直线)?\s*([A-Z])([A-Z])\s*的?\s*(?:对称点|对称|折叠)/g))dfs.push({i:k.index,t:'r',k});
+ for(const k of s.matchAll(/([A-Z])\s*(?:为|是)\s*([A-Z])\s*关于\s*点?\s*([A-Z])\s*的?\s*(?:对称点|对称|中心对称)/g))dfs.push({i:k.index,t:'pr',k});
+ // 折叠后得到 / 对称得到 的写法
+ for(const k of s.matchAll(/(?:把|将)\s*([A-Z])\s*(?:沿|关于)\s*(?:直线)?\s*([A-Z])([A-Z])\s*(?:折叠|对称)\s*(?:得到|到|为)\s*([A-Z])/g))dfs.push({i:k.index,t:'r2',k});
+ for(const k of s.matchAll(/([A-Z])\s*(?:是|为)\s*([A-Z])\s*的?\s*(?:对称点|像)/g)){ // 简单“Q是P的对称点”需上下文，暂忽略或结合前面
+ }
+  for(const k of s.matchAll(/(?:三角形|△)\s*([A-Z]{3})\s*(?:和|与|跟|及)\s*(?:三角形|△)\s*([A-Z]{3})\s*关于\s*(?:直线)?\s*([A-Z]{2})\s*(?:成轴)?对称/g))dfs.push({i:k.index,t:'tf',k});
+ for(const k of s.matchAll(/(?:三角形|△)\s*([A-Z]{3})\s*(?:沿|关于)\s*(?:直线)?\s*([A-Z]{2})\s*(?:折叠|翻折|对折)\s*(?:后)?\s*(?:得到|成|为|到)\s*(?:三角形|△)\s*([A-Z]{3})/g))dfs.push({i:k.index,t:'tf',k:[0,k[1],k[3],k[2]]});
+ for(const k of s.matchAll(/沿\s*(?:直线)?\s*([A-Z]{2})\s*(?:折叠|翻折|对折)[^A-Z;。]*?([A-Z])\s*(?:的对应点\s*(?:为|是)?|落在|落到|恰好落在|恰落在)\s*(?:点)?\s*([A-Z])/g))dfs.push({i:k.index,t:'r',k:[0,k[3],k[2],k[1][0],k[1][1]]});
+ for(const k of s.matchAll(/([A-Z])\s*关于\s*(?:直线)?\s*([A-Z])([A-Z])\s*的?\s*对称点\s*(?:为|是)\s*(?:点)?\s*([A-Z])/g))dfs.push({i:k.index,t:'r',k:[0,k[4],k[1],k[2],k[3]]});
+ for(const k of s.matchAll(/对角线\s*([A-Z])([A-Z])\s*[,、]\s*([A-Z])([A-Z])\s*交于\s*(?:点)?\s*([A-Z])/g))dfs.push({i:k.index,t:'m',k:[0,k[5],k[1],k[2]]});
+ const run1=({t,k})=>{
+  if(t=='tf'){const[x,y]=[k[1],k[2]],[a,b]=k[3],fr=w=>[...w].find(c=>c!=a&&c!=b),u=fr(x),v=fr(y),
+    [src,q]=known(u)&&!known(v)?[u,v]:known(v)&&!known(u)?[v,u]:[0,0];
+   if(!src){[u,v].forEach(need);return}[a,b].forEach(need);
+   der.push({n:q,links:[[src,q],[a,b],[src,a],[src,b],[q,a],[q,b]],fd:{t:'fold',src,a,b},f:e=>reflect(e[src],e[a],e[b])});return}
+  if(t=='m'){const a=k[2],b=k[3];[a,b].forEach(need);der.push({n:k[1],links:[[a,b]],f:e=>[(e[a][0]+e[b][0])/2,(e[a][1]+e[b][1])/2]})}
+  else if(t=='f'){const q=k[5],pp=k[1]==q?k[2]:k[1],a=k[3],b=k[4];[pp,a,b].forEach(need);
+   der.push({n:q,links:[[pp,q]],f:e=>{const A=e[a],B=e[b],dx=B[0]-A[0],dy=B[1]-A[1],u=((e[pp][0]-A[0])*dx+(e[pp][1]-A[1])*dy)/(dx*dx+dy*dy||1e-12);return[A[0]+u*dx,A[1]+u*dy]}})}
+  else if(t=='r'){const q=k[1],src=k[2],a=k[3],b=k[4];[src,a,b].forEach(need);
+   der.push({n:q,links:[[src,q],[a,b]],f:e=>reflect(e[src],e[a],e[b])})}
+  else if(t=='pr'){const q=k[1],src=k[2],m=k[3];[src,m].forEach(need);
+   der.push({n:q,links:[[src,q]],f:e=>pointReflect(e[src],e[m])})}
+  else if(t=='r2'){const src=k[1],a=k[2],b=k[3],q=k[4];[src,a,b].forEach(need);
+   der.push({n:q,links:[[src,q],[a,b]],f:e=>reflect(e[src],e[a],e[b])})}
+ };
+ const meta=({t,k})=>t=='m'?{t:'mid',a:k[2],b:k[3]}:t=='f'?{t:'foot',pp:k[1]==k[5]?k[2]:k[1],a:k[3],b:k[4]}:t=='r'?{t:'fold',src:k[2],a:k[3],b:k[4]}:t=='r2'?{t:'fold',src:k[1],a:k[2],b:k[3]}:{t:'pt',src:k[2],m:k[3]};
+ let pend=dfs.sort((x,y)=>x.i-y.i);
+ for(let r=0;r<6&&pend.length;r++){const nx=[];let er;pend.forEach(it=>{try{const n0=der.length;run1(it);der.slice(n0).forEach(d=>{d.fd=d.fd||meta(it)})}catch(e){er=e;nx.push(it)}});if(nx.length==pend.length)throw er;pend=nx}
+ let kin=null,kinT=0;
+ {const ks=[...s.matchAll(/([A-Z])\s*从\s*(?:点)?\s*([A-Z])\s*(?:开始)?\s*沿\s*([A-Z])([A-Z])\s*(?:边)?\s*向\s*(?:点)?\s*([A-Z])\s*(?:以)?\s*每秒钟?\s*([\d.]+)/g)];
+  if(ks.length==2&&ks.every(k=>pts[k[2]]&&pts[k[5]])){kin=ks.map(k=>({n:k[1],f:k[2],t:k[5],v:+k[6]}));mv=kin[0].n;kinT=Math.min(...kin.map(q=>ds(pts[q.f],pts[q.t])/q.v));
+   const k0=kin[0],k1=kin[1];der.push({n:k1.n,links:[[k1.f,k1.n]],tr:1,fd:{t:'kin'},f:e=>{const a=pts[k1.f],b=pts[k1.t],r=Math.min(k1.v*ds(e[k0.n],pts[k0.f])/k0.v/ds(a,b),1);return[a[0]+(b[0]-a[0])*r,a[1]+(b[1]-a[1])*r]}})}}
+ // 多动点：若存在第二个独立动点，暂支持“与主点在同一路径上”的情况（双参数采样）
+ if(!stat&&allMv.length>1){
+  const candidates=allMv.filter(c=>c!==mv&&!pts[c]&&!der.some(d=>d.n===c));
+  if(candidates.length){
+   mv2=candidates[0];
+  }
+ }
+ // ---- 特殊：正方形/矩形边上多动点 + 等长约束（如 BE=CF）→ 单参数 ----
+ let constrained=null; // {tMin,tMax, posE, posF, ...}
+ const sidePts=[]; // {name, side:[A,B], from}
+ for(const k of s.matchAll(/(?:点)?([A-Z])\s*(?:在|位于)\s*(?:边)?\s*([A-Z])([A-Z])\s*(?:上|边)/g)){
+  sidePts.push({n:k[1], side:[k[2],k[3]]});
+ }
+ // 也匹配 “E在BC上，F在CD上”
+ for(const k of s.matchAll(/([A-Z])\s*在\s*([A-Z])([A-Z])\s*上/g)){
+  if(!sidePts.some(p=>p.n===k[1])) sidePts.push({n:k[1], side:[k[2],k[3]]});
+ }
+ // 等长约束 BE=CF 或 BE=CF=t
+ const eqCons=[];
+ for(const k of s.matchAll(/(?<![A-Z])([A-Z]{2})\s*=\s*([A-Z]{2})(?![A-Z])/g)){
+  eqCons.push([k[1],k[2]]);
+ }
+ // 正方形自动坐标
+ {const sm=s.match(/正方形\s*([A-Z]{4})/),ry=[...s.matchAll(/([A-Z])\s*在\s*射线\s*O([A-Z])/g)];
+  if(sm&&ry.length==2&&pts.O&&!stat){const a=num(/边长\s*(?:为|=)?\s*([\d.]+)/,4),n=[...sm[1]],X=ry[0][1],Y=ry[1][1],ix=n.indexOf(X),iy=n.indexOf(Y),fw=iy==(ix+1)%4;
+   if(ix>=0&&iy>=0&&(fw||ix==(iy+1)%4)){mv=X;mv2=null;const aX=fw?n[(ix+3)%4]:n[(ix+1)%4],aY=fw?n[(iy+1)%4]:n[(iy+3)%4],EL=[...'EGHKLPQRST'].find(c=>!s.includes(c)),
+    nr=e=>{const x=e[X],y=e[Y];let nx=-(y[1]-x[1]),ny=y[0]-x[0];if(-nx*x[0]-ny*x[1]>0){nx=-nx;ny=-ny}return[nx,ny]};
+    der.push({n:Y,links:[],f:e=>[0,Math.sqrt(Math.max(a*a-e[X][0]**2,0))]});
+    der.push({n:aY,links:[],f:e=>{const q=nr(e);return[e[Y][0]+q[0],e[Y][1]+q[1]]}});
+    der.push({n:aX,links:[],f:e=>{const q=nr(e);return[e[X][0]+q[0],e[X][1]+q[1]]}});
+    der.push({n:EL,links:[],f:e=>[(e[X][0]+e[Y][0])/2,(e[X][1]+e[Y][1])/2]});
+    pts[ry[0][2]]=[a*1.25,0];pts[ry[1][2]]=[0,a*1.25];n.concat([EL,'O',ry[0][2],ry[1][2]]).forEach(c=>used.add(c));exP.push(sm[1]);sqax={a,X,Y,aX,aY,EL,R1:ry[0][2],R2:ry[1][2]}}}}
+ let sqName=null, sideLen=4;
+ const sqm=s.match(/(正方形|矩形|长方形)\s*([A-Z]{4})/);
+ if(sqm){
+  sqName=sqm[2];
+  const a=num(/边长\s*(?:为|=)?\s*([\d.]+)/,4);
+  sideLen=a;
+  if(![...sqName].every(c=>pts[c])&&![...sqName].some(dyn)){
+   const [A,B,C,D]=[...sqName];
+   pts[A]=pts[A]||[0,0]; const ln2=(x,y)=>{const k=s.match(new RegExp('(?<![A-Z])(?:'+x+y+'|'+y+x+')\\s*=\\s*([\\d.]+)'));return k?+k[1]:0},wd=ln2(A,B)||ln2(C,D)||sideLen,ht=ln2(A,D)||ln2(B,C)||sideLen;
+   pts[B]=pts[B]||[wd,0]; pts[C]=pts[C]||[wd,ht]; pts[D]=pts[D]||[0,ht];
+   [...sqName].forEach(c=>used.add(c));
+  }
+ }
+ // 若有两个边上点 + 一个等长约束，且涉及正方形，则单参数化
+ if(sidePts.length>=2 && eqCons.length>=1 && sqName && !foldFx){
+  const eInfo=sidePts[0], fInfo=sidePts[1];
+  const [cons1,cons2]=eqCons[0]; // e.g. BE, CF
+  // 确定参数 t = BE = CF，范围 0~sideLen
+  // 假设标准正方形 A B C D 逆时针
+  const verts=[...sqName];
+  const getPos=(from,to,t)=>{ // 从 from 沿边到 to 走距离 t
+   const A=pts[from],B=pts[to];
+   const len=ds(A,B)||sideLen;
+   const r=Math.min(Math.max(t/len,0),1);
+   return [A[0]+(B[0]-A[0])*r, A[1]+(B[1]-A[1])*r];
+  };
+  // 解析 BE：B到E，E在BC上 → t=BE，E从B沿BC
+  // CF：C到F，F在CD上 → t=CF，F从C沿CD
+  constrained={cons:[cons1,cons2],tMin:0,tMax:Math.min(ds(pts[eInfo.side[0]],pts[eInfo.side[1]]),ds(pts[fInfo.side[0]],pts[fInfo.side[1]])), eName:eInfo.n, fName:fInfo.n,
+   posE:t=>getPos(eInfo.side[0],eInfo.side[1], /B/.test(cons1)?t: (sideLen-t) ), // 简化：根据约束起点
+   posF:t=>getPos(fInfo.side[0],fInfo.side[1], /C/.test(cons2)?t: (sideLen-t) )};
+  // 更精确：根据约束字母确定方向
+  const resolve=(cons,ptInfo)=>{
+   // cons like "BE"，ptInfo.side = ["B","C"]，则从B出发
+   const start=cons[0], end=cons[1];
+   if(ptInfo.side[0]===start) return t=>getPos(ptInfo.side[0],ptInfo.side[1],t);
+   if(ptInfo.side[1]===start) return t=>getPos(ptInfo.side[1],ptInfo.side[0],t);
+   // 若约束是另一端
+   return t=>getPos(ptInfo.side[0],ptInfo.side[1],t);
+  };
+  constrained.posE=resolve(cons1,eInfo);
+  constrained.posF=resolve(cons2,fInfo);
+  // 主运动点设为第一个，路径用参数 t 采样
+  mv=eInfo.n; mv2=fInfo.n;
+  // 后面会用 constrained 生成 path
+ }
+ let lines,closed=false,desc,F;
+ const T=['t'],cl=s.split(/[,;。\n]/),loop=(f,a,b)=>{const l=Array.from({length:2001},(_,i)=>f(a+(b-a)*i/2000));closed=ds(l[0],l[2000])<1e-6;if(closed)l.pop();return[l]};
+ let pm=[...s.matchAll(/(三角形|△|正方形|矩形|长方形|[四五六]边形|多边形)\s*([A-Z]*)/g)].find(k=>![...k[2]].some(dyn)&&!/^\s*的?面积/.test(s.slice(k.index+k[0].length)));
+ const sg=s.match(/线段\s*([A-Z])([A-Z])(?!\s*的?\s*中点)|在\s*([A-Z])([A-Z])\s*(?:边|上)|边\s*([A-Z])([A-Z])\s*上/),sn=sg&&[sg[1]||sg[3]||sg[5],sg[2]||sg[4]||sg[6]],segOK=sn&&!sn.includes(mv)&&pts[sn[0]]&&pts[sn[1]];
+ if(stat){const p0=Object.values(pts)[0]||[0,0];lines=[[p0,p0]];desc='静态图形（无动点）'}
+ else if(kin){const a0=pts[kin[0].f],b0=pts[kin[0].t],r=Math.min(kinT*kin[0].v/ds(a0,b0),1);lines=[[a0,[a0[0]+(b0[0]-a0[0])*r,a0[1]+(b0[1]-a0[1])*r]]];desc='点'+kin[0].n+'沿'+kin[0].f+kin[0].t+'匀速运动（t从0到'+f3(kinT)+'秒，其中一点到终点即停止）'}
+ else if(spm){const nm=spm[2];if(![...nm].every(c=>pts[c]))throw Error('请先给出'+nm+'各顶点的坐标或相关条件');lines=[[...nm].map(c=>pts[c])];closed=true;[...nm].forEach(c=>used.add(c));desc='点'+mv+'在'+nm+'的边界上运动，直线'+spm[1]+mv}
+ else if(fa){const cx=fa.c/2,cy=fa.c/2/Math.tan(fa.th),R=fa.c/2/Math.sin(fa.th);used.add(fa.A);used.add(fa.B);
+  F=(x,y)=>(x-cx)**2+(y-cy)**2-R*R;lines=clip(loop(t=>[cx+R*Math.cos(t),cy+R*Math.sin(t)],0,2*Math.PI),q=>q[1]>1e-9);closed=false;desc='圆弧（'+fa.P+'在使∠'+fa.A+fa.P+fa.B+'='+f3(fa.th*180/Math.PI)+'°的圆弧上）'}
+ else if(sqax){lines=[[[0,0],[sqax.a,0]]];desc='线段O'+sqax.R1+'（'+sqax.X+'在射线O'+sqax.R1+'上滑动，'+sqax.Y+'随之在射线O'+sqax.R2+'上滑动）'}
+ else if(lc){const c=pts[lc.o];if(!c)throw Error('缺少点'+lc.o+'的位置');used.add(lc.o);
+  let L0=loop(t=>[c[0]+lc.r*Math.cos(t),c[1]+lc.r*Math.sin(t)],0,2*Math.PI);desc='圆（圆心'+lc.o+'，半径'+f3(lc.r)+'）';
+  const pg=s.match(/(?:三角形|△|矩形|长方形|正方形)\s*([A-Z]{3,4})/),PG=pg&&[...pg[1]].every(q=>pts[q])?[...pg[1]].map(q=>pts[q]):null,
+   inP=(P,q)=>{let r=false;for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length],cr=(b[0]-a[0])*(q[1]-a[1])-(b[1]-a[1])*(q[0]-a[0]);
+    if(Math.abs(cr)<1e-9&&q[0]>=Math.min(a[0],b[0])-1e-9&&q[0]<=Math.max(a[0],b[0])+1e-9&&q[1]>=Math.min(a[1],b[1])-1e-9&&q[1]<=Math.max(a[1],b[1])+1e-9)return true;
+    if((a[1]>q[1])!=(b[1]>q[1])&&q[0]<(b[0]-a[0])*(q[1]-a[1])/(b[1]-a[1])+a[0])r=!r}return r};
+  if(/内/.test(s)&&PG){const k2=clip(L0,q=>inP(PG,q));if(k2.length){L0=k2;closed=false;desc='以'+lc.o+'为圆心、半径'+f3(lc.r)+'的圆在△'+pg[1]+'内部的弧'}}
+  F=(x,y)=>(x-c[0])**2+(y-c[1])**2-lc.r*lc.r;lines=L0}
+ else if(m=s.match(/x\s*=\s*([^,;。]+?)\s*[,;]\s*y\s*=\s*([^,;。]+)/)){
+  const fx=C(m[1],T),fy=C(m[2],T),r=rg(s,'t')||[0,2*Math.PI];
+  lines=loop(t=>[fx(t),fy(t)],r[0],r[1]);desc='参数曲线 x='+m[1]+'，y='+m[2]}
+ else if((m=s.match(/(?:^|[^a-z])[ρr]\s*=\s*([^,;。]+)/))&&(()=>{try{const f=C(m[1],T);return f(1)!=f(2)}catch(e){return 0}})()){
+  const f=C(m[1],T),r=rg(s,'t')||[0,2*Math.PI];
+  lines=loop(t=>[f(t)*Math.cos(t),f(t)*Math.sin(t)],r[0],r[1]);desc='极坐标曲线 r='+m[1]}
+ else if(pm&&!segOK){let n=pm[2],k=pm[1];const tri=/三角形|△/.test(k);if(!n)n=tri?'ABC':'ABCD';
+  if(![...n].every(c=>pts[c])){const a=num(/边长\s*(?:为|=)?\s*([\d.]+)/,4),l=num(/长\s*(?:为|=)?\s*([\d.]+)/,6),w=num(/宽\s*(?:为|=)?\s*([\d.]+)/,3);
+   const V=tri?[[0,0],[6,0],[2,4]]:/正方形/.test(k)?[[0,0],[a,0],[a,a],[0,a]]:/矩形|长方形/.test(k)?[[0,0],[l,0],[l,w],[0,w]]:[];
+   if(V.length!=n.length)throw Error('请给出'+k+n+'各顶点坐标，如 A(0,0)');[...n].forEach((c,i)=>pts[c]=pts[c]||V[i])}
+  lines=[[...n].map(c=>(used.add(c),pts[c]))];closed=true;desc=k+n+'的边界'}
+ else if(segOK){lines=[[pts[sn[0]],pts[sn[1]]]];sn.forEach(c=>used.add(c));desc='线段'+sn.join('')+'（往返运动）'}
+ else{
+  let eq;for(const c of cl){if(/求|最大|最小|最值|范围|(^|[^a-z])z\s*=/.test(c))continue;
+   let q=(c.match(/[0-9a-z.+\-*\/^()\s]+=[0-9a-z.+\-*\/^()\s]+/)||[''])[0];
+   while((q.match(/\(/g)||[]).length>(q.match(/\)/g)||[]).length)q=q.slice(0,q.lastIndexOf('('));
+   if(q&&/[xy]/.test(q.replace(FR,''))){eq=q.trim();break}}
+  if(eq){const[a,b]=eq.split('='),fa=C(a,['x','y']),fb=C(b,['x','y']);F=(x,y)=>fa(x,y)-fb(x,y);
+   const ext=Math.max(10,...Object.values(pts).flat().map(Math.abs))*1.4;
+   let D=30;lines=implicit(F,D,600);
+   if(lines.some(l=>l.some(p=>Math.abs(p[0])>D*.97||Math.abs(p[1])>D*.97))){D=ext;lines=implicit(F,D,500)}
+   closed=lines.length==1&&ds(lines[0][0],lines[0][lines[0].length-1])<1e-6;
+   const rx=rg(s,'x'),ry=rg(s,'y');if(rx||ry){lines=clip(lines,p=>(!rx||p[0]>=rx[0]-1e-9&&p[0]<=rx[1]+1e-9)&&(!ry||p[1]>=ry[0]-1e-9&&p[1]<=ry[1]+1e-9));closed=false}
+   desc='曲线 '+eq}
+  else if(/圆/.test(s)){
+   const cn=(s.match(/以\s*([A-Z])\s*为圆心/)||s.match(/圆心\s*([A-Z])/)||[])[1],c=cn&&pts[cn]||[0,0];if(cn)used.add(cn);
+   const rm=s.match(/半径\s*(?:为|=|r\s*=)*\s*([0-9a-z.+\-*\/^() ]+?)(?:[^0-9a-z.+\-*\/^() ]|$)/);if(!rm)throw Error('请给出圆的半径，例如“半径为3”或圆的方程 x²+y²=9');
+   const r=C(rm[1])();F=(x,y)=>(x-c[0])**2+(y-c[1])**2-r*r;lines=loop(t=>[c[0]+r*Math.cos(t),c[1]+r*Math.sin(t)],0,2*Math.PI);desc='圆（圆心('+f3(c[0])+','+f3(c[1])+')，半径'+f3(r)+'）'}
+  else if(sn&&!sn.includes(mv)&&!(pts[sn[0]]&&pts[sn[1]]))throw Error('线段'+sn.join('')+'的端点缺少坐标：请写成 '+sn.find(c=>!pts[c])+'(x,y)，或说明菱形、正方形等图形条件');
+  else throw Error('没有识别出点'+mv+'运动的图形。可写：圆、椭圆/抛物线方程、线段AB、三角形ABC、正方形、参数方程 x=…,y=…、极坐标 r=…。也支持中点、垂足、关于直线/点的对称点（折叠）')}
+ // 若有约束多动点，用单参数 t 生成主点路径，副点作为派生
+ if(constrained){
+  const {tMin,tMax,posE,posF,eName,fName}=constrained;
+  const N=400;
+  const ts=Array.from({length:N+1},(_,i)=>tMin+(tMax-tMin)*i/N);
+  lines=[ts.map(t=>posE(t))];
+  closed=false;
+  desc=`边上动点（${eName}、${fName}，${constrained.cons[0]}=${constrained.cons[1]}）`;
+  // 预计算副点轨迹，派生函数用最近邻或参数比例
+  const fTrail=ts.map(t=>posF(t));
+  der.push({n:fName, links:[[eName,fName]], f:e=>{const p=e[eName],p0=posE(tMin),p1=posE(tMax);return posF(tMin+(tMax-tMin)*ds(p0,p)/(ds(p0,p1)||1))}, tr:1, trail:null});
+  mv=eName; mv2=null; // 单参数 + 派生
+ }
+ if(!lines||!lines.length)throw Error('没有在可视范围内找到该曲线');
+ const path=build(lines,closed);
+ if(F)path.pts.forEach(q=>{const r=proj(F,[q.x,q.y]);q.x=r[0];q.y=r[1]});
+ let cn=(pm&&pm[2])||tn;
+ if(constrained&&sqName)cn=sqName;
+ if(rhN)cn=rhN;
+ const ctx=cn&&cn.length>=3&&[...cn].every(c=>pts[c])?[...cn].map(c=>pts[c]):null;
+ // 目标量（更稳健的识别）
+ const os=s.includes('求')?s.slice(s.lastIndexOf('求')):s;
+ let ob;
+ const PS='(?:△|三角形|四边形|五边形|六边形|矩形|长方形|正方形|梯形|平行四边形|菱形)',lk=w=>[...w].map((c,i,a)=>[c,a[(i+1)%a.length]]),lb=w=>(w.length==3?'△':w.length==4?'四边形':'多边形')+w,
+  sh=(n,e)=>{let t=0;[...n].forEach((c,i,a)=>{const p=e[c],q=e[a[(i+1)%a.length]];t+=p[0]*q[1]-q[0]*p[1]});return Math.abs(t)/2};
+ {const pq=os.match(/(?:^|[^A-Z])周长/)&&!/[A-Z]{3,6}\s*的?\s*周长/.test(os)&&(sqb||rhN)?[0,'',sqb?sqb.n:rhN]:os.match(/(正方形|矩形|长方形|菱形|平行四边形|四边形|三角形|△)?\s*([A-Z]{3,6})\s*的?\s*周长/);
+  if(pq&&!ob){const w=pq[2];[...w].forEach(need);
+   ob={name:(sqb&&sqb.n==w?'正方形':rhN==w?'菱形':pq[1]&&pq[1]!='三角形'?pq[1]:w.length==3?'△':'四边形')+w+'的周长',links:lk(w),f:(p,p2)=>{const e=env(p,p2);return[...w].reduce((t,c,i,a)=>t+ds(e[c],e[a[(i+1)%a.length]]),0)},k:{t:'perim',n:[...w],polys:[w]}}}}
+ {const cq=!spm&&/坐标/.test(os)&&os.match(/(?:点)?\s*([A-Z])\s*(?:点)?\s*的?\s*坐标/);if(cq){need(cq[1]);ob={name:cq[1]+'点的坐标',links:[],f:(p,p2)=>env(p,p2)[cq[1]][0],k:{t:'coord',n:cq[1]}}}}
+ {const rg2=os.match(/(?:三角形|△)\s*([A-Z]{3})\s*(?:是|为)\s*直角三角形/);
+  if(!ob&&rg2){const n=[...rg2[1]];n.forEach(need);const dt=i=>(p,p2)=>{const e=env(p,p2),a=e[n[i]],b=e[n[(i+1)%3]],c=e[n[(i+2)%3]];return(b[0]-a[0])*(c[0]-a[0])+(b[1]-a[1])*(c[1]-a[1])};
+   ob={name:'△'+rg2[1]+'是直角三角形',links:lk(rg2[1]),f:dt(0),multi:n.map((c,i)=>({lab:'∠'+c+' = 90°',f:dt(i)})),k:{t:'right',polys:[rg2[1]]}}}}
+ if(!ob&&spm){const cV=spm[1],pn=[...spm[2]],r1=+spm[3]/+spm[4];[cV,...pn].forEach(need);
+  const sp=(p,p2)=>{const e=env(p,p2),c=e[cV],m=e[mv],Q=pn.map(q=>e[q]),tot=sh(spm[2],e),cr=q=>(m[0]-c[0])*(q[1]-c[1])-(m[1]-c[1])*(q[0]-c[0]),o=[];
+   Q.forEach((a,i)=>{const b=Q[(i+1)%Q.length],da=cr(a),db=cr(b);if(da>=-1e-12)o.push(a);if((da>=-1e-12)!=(db>=-1e-12)){const t=da/(da-db);o.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t])}});
+   let ar=0;o.forEach((a,i)=>{const b=o[(i+1)%o.length];ar+=a[0]*b[1]-b[0]*a[1]});ar=Math.abs(ar)/2;return ar/(tot-ar)};
+  ob={name:'直线'+cV+mv+'分成两部分的面积比',links:[[cV,mv]],f:sp,multi:[{lab:'面积比 '+spm[3]+':'+spm[4],f:sp,v:r1},...(Math.abs(r1-1)>1e-9?[{lab:'面积比 '+spm[4]+':'+spm[3],f:sp,v:1/r1}]:[])],k:{t:'split',polys:[spm[2]],cV}}}
+ {const bi=/比|[:：]/.test(os),rq=bi&&os.match(new RegExp('S?\\s*'+PS+'\\s*([A-Z]{3,6})\\s*(?:的?面积)?\\s*(?:[:：/]|与|和|跟|比)\\s*S?\\s*'+PS+'\\s*([A-Z]{3,6})'));
+  if(rq){const w1=rq[1],w2=rq[2];[...w1+w2].forEach(need);
+   ob={name:'S'+lb(w1)+' : S'+lb(w2),links:[...lk(w1),...lk(w2)],f:(p,p2)=>{const e=env(p,p2);return sh(w1,e)/sh(w2,e)},k:{t:'ratio',A:w1,B:w2,polys:[w1,w2]}}}
+  const sq=!ob&&bi&&os.match(/(?<![A-Z])([A-Z]{2})\s*(?:[:：]|与|比)\s*([A-Z]{2})(?![A-Z])/);
+  if(sq){[...sq[1]+sq[2]].forEach(need);ob={name:sq[1]+' : '+sq[2],links:[[sq[1][0],sq[1][1]],[sq[2][0],sq[2][1]]],f:(p,p2)=>{const e=env(p,p2);return ds(e[sq[1][0]],e[sq[1][1]])/ds(e[sq[2][0]],e[sq[2][1]])}}}
+  if(!ob){const ag=os.match(/(?:∠|角)\s*([A-Z]{1,3})(?![A-Z]|\s*[=\d])/);
+   if(ag){let n=[...ag[1]];if(n.length==1){const q=cn&&cn.indexOf(n[0])>=0?[...cn]:null;if(!q)throw Error('请用三个字母表示角，如∠ABC');const i=q.indexOf(n[0]);n=[q[(i+q.length-1)%q.length],n[0],q[(i+1)%q.length]]}
+    if(n.length!=3)throw Error('请用三个字母表示角，如∠ABC');n.forEach(need);
+    ob={name:'∠'+n.join('')+'的度数',links:[[n[0],n[1]],[n[1],n[2]]],f:(p,p2)=>{const e=env(p,p2),[a,b,c]=n.map(q=>e[q]),ux=a[0]-b[0],uy=a[1]-b[1],vx=c[0]-b[0],vy=c[1]-b[1];return Math.acos(Math.max(-1,Math.min(1,(ux*vx+uy*vy)/(Math.hypot(ux,uy)*Math.hypot(vx,vy)))))*180/Math.PI},k:{t:'angle',n}}}}
+  if(!ob){const am2=[...os.matchAll(new RegExp(PS+'\\s*([A-Z]{3,6})','g'))].find(k=>[...k[1]].some(d2)&&(/面积/.test(os)||/S\s*△/.test(os)||/S_/.test(os)));
+   if(am2){[...am2[1]].forEach(need);ob={name:lb(am2[1])+'的面积',links:lk(am2[1]),f:(p,p2)=>sh(am2[1],env(p,p2)),k:{t:'area',n:[...am2[1]],polys:[am2[1]]}}}}}
+ // 1. 三角形面积
+ const am=[...os.matchAll(/(?:△|三角形)\s*([A-Z]{3})/g)].find(k=>[...k[1]].some(d2)&&(/面积/.test(os)||/S\s*△/.test(os)||/S_/.test(os)));
+ if(am&&!ob){const n=[...am[1]];n.forEach(need);
+  ob={name:'△'+am[1]+'的面积',links:[[n[0],n[1]],[n[1],n[2]],[n[2],n[0]]],f:(p,p2)=>{const e=env(p,p2),[a,b,c]=n.map(q=>e[q]);return Math.abs((b[0]-a[0])*(c[1]-a[1])-(c[0]-a[0])*(b[1]-a[1]))/2}}}
+ // 2. 点到直线距离（P到AB的距离）
+ if(!ob){const dm=os.match(/(?:点)?([A-Z])\s*到\s*(?:直线|边)?\s*([A-Z])([A-Z])\s*的?\s*距离/)||os.match(/([A-Z])\s*到\s*([A-Z])([A-Z])\s*的?\s*(?:垂|距)/);
+  if(dm&&(d2(dm[1])||[...dm[2]+dm[3]].some(d2))){const pt=dm[1],a=dm[2],b=dm[3];[pt,a,b].forEach(need);
+   ob={name:pt+'到'+a+b+'的距离',links:[[pt,a],[a,b]],f:(p,p2)=>{const e=env(p,p2),P=e[pt],A=e[a],B=e[b],dx=B[0]-A[0],dy=B[1]-A[1],l=Math.hypot(dx,dy)||1e-12;
+    return Math.abs((P[0]-A[0])*dy-(P[1]-A[1])*dx)/l}}}}
+ // 3. 线段长度表达式（PA、PA+PB、PA² 等）——双动点时常用 PQ
+ if(!ob){const tk=[...os.matchAll(/(?<![A-Z])([A-Z]{2})(?![A-Z])/g)].filter(k=>[...k[1]].some(d2)&&k[1][0]!=k[1][1]);
+  if(tk.length){
+   const mk=(a,b)=>{const rest=os.slice(b).match(/^\|?(\^[\d.]+)?/);b+=rest[0].length;while(a>0&&/[\d.*+\-\/]/.test(os[a-1]))a--;
+    const sub=os.slice(a,b).replace(/\|/g,''),ts=[],ex=sub.replace(/(?<![A-Z])[A-Z]{2}(?![A-Z])/g,w=>{let i=ts.indexOf(w);if(i<0)i=ts.push(w)-1;return'uvw'[i]});
+    return{sub,ts,fn:C(ex,['u','v','w'])}};
+   let r;try{r=mk(tk[0].index,tk[tk.length-1].index+2)}catch(e){r=mk(tk[0].index,tk[0].index+2)}
+   r.ts.forEach(w=>[...w].forEach(need));
+   const cf=r.ts.length==2?[0,1].map(i=>r.fn(...[0,1,2].map(j=>j==i?1:0))):null,lin=cf&&cf.every(isFinite)&&Math.abs(r.fn(1,1,0)-cf[0]-cf[1])<1e-12;ob={name:r.sub.trim().replace(/\*/g,'×'),k:lin?{t:'lin',ts:r.ts,c:cf}:(r.ts.length==1&&Math.abs(r.fn(1,0,0)-1)<1e-12?{t:'len',ts:r.ts}:null),links:r.ts.map(w=>[w[0],w[1]]),f:(p,p2)=>{const e=env(p,p2);return r.fn(...r.ts.map(w=>ds(e[w[0]],e[w[1]])))}}}}
+ // 4. 显式 z= 或 求表达式
+ if(!ob){const gm=s.match(/(?:^|[^a-z])z\s*=\s*([0-9a-z.+\-*\/^()\s]+)/)||s.match(/求\s*([0-9a-z.+\-*\/^()\s]+?)\s*的?\s*(?:最大|最小|最值|范围)/)||s.match(/求\s*([0-9a-z.+\-*\/^()\s]+)/);
+  if(gm&&/[xy]/.test(gm[1].replace(FR,''))){const fn=C(gm[1],['x','y']);ob={name:gm[1].trim(),links:[],f:(p,p2)=>fn(p[0],p[1])}}}
+ // 5. 兜底：到固定点的距离，或纵坐标
+ let note='';
+ if(!ob){const fr=Object.keys(pts).filter(n=>!used.has(n));
+  if(fr.length){const n=fr[0];ob={name:mv+n,links:[[mv,n]],f:(p,p2)=>ds(p,pts[n])}}
+  else{ob={name:'纵坐标 y',links:[],f:(p,p2)=>p[1]};note='没有指定求值目标，默认标出纵坐标的最大、最小点。想看别的，可加一句“求PA的最值”或“求x+y的最值”或“求P到AB的距离”。'}}
+ if(mv2)note=(note?note+' ':'')+'已启用双动点模式：'+mv+'与'+mv2+'在同一路径上独立运动，最值通过网格采样得到。';
+ // 轨迹显示：目标相关派生点优先，否则全部显示
+ const hit=der.filter(d=>ob.name.includes(d.n));(hit.length?hit:der).forEach(d=>d.tr=1);
+ der.filter(d=>d.tr).forEach(d=>d.trail=path.pts.map(q=>({p:env([q.x,q.y])[d.n],b:q.b})));
+ // 最值（支持单参数或双参数）
+ const P=path.pts,n=P.length;
+ function atLocal(uu){const t=uu*path.L;let lo=0,hi=n-1;while(lo<hi){const m=(lo+hi+1)>>1;if(P[m].s<=t)lo=m;else hi=m-1}
+  const a=P[lo],nx=lo+1<n,b=nx?P[lo+1]:path.closed?P[0]:a,d=(nx?P[lo+1].s:path.L)-a.s,k=d>1e-12&&!b.b?(t-a.s)/d:0;
+  return[a.x+(b.x-a.x)*k,a.y+(b.y-a.y)*k]}
+ let ex,mx,mn;
+ if(mv2){
+  // 双动点：网格采样（约 80×80）
+  const N=80;let bestMx=-Infinity,bestMn=Infinity,mxPos=null,mnPos=null;
+  for(let i=0;i<=N;i++){
+   const p1=atLocal(i/N);
+   for(let j=0;j<=N;j++){
+    const p2=atLocal(j/N);
+    const v=ob.f(p1,p2);
+    if(!isFinite(v))continue;
+    if(v>bestMx){bestMx=v;mxPos={u1:i/N,u2:j/N,p1,p2,v}}
+    if(v<bestMn){bestMn=v;mnPos={u1:i/N,u2:j/N,p1,p2,v}}
+   }
+  }
+  if(!mxPos)throw Error('目标量无法计算（双动点）');
+  mx=bestMx;mn=bestMn;
+  ex={mx:[mxPos],mn:[mnPos],dual:true};
+ }else{
+  const vals=P.map(q=>ob.f([q.x,q.y])).map(v=>isFinite(v)?v:NaN),ok=vals.filter(v=>!isNaN(v));
+  if(!ok.length)throw Error('目标量无法计算');
+  mx=Math.max(...ok);mn=Math.min(...ok);
+  const eps=1e-7*(1+Math.max(Math.abs(mx),Math.abs(mn)));
+  const pick=(t,sg)=>{const r=[];if(mx-mn<eps*10)return r;
+   for(let i=0;i<n;i++){const v=vals[i]*sg;if(v<t*sg-eps)continue;const a=vals[(i+n-1)%n]*sg,b=vals[(i+1)%n]*sg;
+    if((path.closed||i>0)&&v<a-1e-12||(path.closed||i<n-1)&&v<b-1e-12)continue;
+    if(r.every(j=>Math.abs(P[j].s-P[i].s)>path.L*.03&&(!path.closed||path.L-Math.abs(P[j].s-P[i].s)>path.L*.03))&&r.length<4)r.push(i)}return r};
+  ex={mx:pick(mx,1),mn:pick(mn,-1),vals,rf:{}};
+  const gs=(f,a,b)=>{const r=.381966;let c=a+r*(b-a),d=b-r*(b-a),fc=f(c),fd=f(d);for(let k=0;k<60;k++){if(fc<fd){b=d;d=c;fd=fc;c=a+r*(b-a);fc=f(c)}else{a=c;c=d;fc=fd;d=b-r*(b-a);fd=f(d)}}return fc<fd?c:d},
+   cu=x=>path.closed?(x%1+1)%1:Math.min(Math.max(x,0),1),Ap=x=>{const q=atLocal(cu(x));return F?proj(F,q):q};
+  const bs=(x0,sg)=>{const hh=1e-5,ff=x=>sg*ob.f(Ap(x)),g1=x=>ff(x+hh)-ff(x-hh);let lo=x0-1e-6,hi=x0+1e-6,ga=g1(lo),gb=g1(hi);
+   if(!(isFinite(ga)&&isFinite(gb)&&ga*gb<0))return x0;for(let k=0;k<60;k++){const m=(lo+hi)/2,gm=g1(m);if(gm*ga<0)hi=m;else{lo=m;ga=gm}}
+   const x1=(lo+hi)/2;return ff(x1)<=ff(x0)+1e-13?x1:x0};
+  [[ex.mx,-1],[ex.mn,1]].forEach(([ar,sg])=>ar.forEach(i=>{const u0=P[i].s/path.L,xx=bs(gs(x=>sg*ob.f(Ap(x)),u0-2.5/n,u0+2.5/n),sg),q=Ap(xx),v=ob.f(q);
+   ex.rf[i]=sg*v<=sg*vals[i]+1e-12?{v,p:q,u:cu(xx)}:{v:vals[i],p:[P[i].x,P[i].y],u:u0}}));
+ }
+ let tgs=null,roots=[];
+ {const tmx=os.match(/(?:等于|为|是|=)\s*(-?[0-9.]+(?:\s*sqrt\s*[0-9.]+)?(?:\s*\/\s*[0-9.]+)?)\s*(?:时|的位置|cm|[,;。？?]|$)/);
+  if(ob.multi)tgs=ob.multi.map(q=>({lab:q.lab,f:q.f,v:q.v||0}));
+  else if(tmx&&!mv2&&!stat&&ob.f&&!(ob.k&&ob.k.t=='coord')&&/时|位置|存在|几/.test(os)){let tg=null;try{tg=CMP(tmx[1])()}catch(e){}if(tg!=null&&isFinite(tg))tgs=[{lab:'',f:ob.f,v:tg}]}
+  if(tgs&&!mv2){const Ap2=x=>{const q=atLocal(path.closed?(x%1+1)%1:Math.min(Math.max(x,0),1));return F?proj(F,q):q};
+   tgs.forEach(T=>{const g1=x=>T.f(Ap2(x))-T.v,ok=v=>Math.abs(v)<1e-6*(1+Math.abs(T.v));let px=0,pv=g1(0);
+    for(let i=1;i<=1500;i++){const x=i/1500,v=g1(x);
+     if(isFinite(v)&&isFinite(pv)&&(pv*v<0||Math.abs(v)<1e-10&&Math.abs(pv)>1e-10)){let xr=x;
+      if(Math.abs(v)>1e-10){let lo=px,hi=x,gl=pv;for(let k=0;k<60;k++){const m=(lo+hi)/2,gm=g1(m);if(gm*gl<=0)hi=m;else{lo=m;gl=gm}}xr=(lo+hi)/2}
+      const q=Ap2(xr);if(ok(g1(xr))&&!roots.some(r=>r.lab==T.lab&&ds(r.p,q)<1e-6))roots.push({lab:T.lab,u:xr,p:q})}
+     pv=v;px=x}})}}
+ return{pts,mv,mv2,path,ob,der,desc,note,ex,mx,mn,G,ctx,rhN,stat,trS,given,fold:foldFx,lc,extra:exP,sqb,ferm,eqa,sqax,fa,rc:!!constrained,osrc:os,roots,tgs,tm:kin?{T:kinT,ks:kin}:null,at:kin?((m=>m?+m[1]:null)(s.match(/经过\s*([\d.]+)\s*秒/))):null,fixedKw:/定值|恒为|定长|定量|不变/.test(s)}}
+// ---- 计算过程与辅助线 ----
+function fitC(T){const Q=T.map(x=>x.p).filter(Boolean),n=Q.length;if(n<9)return null;const A=Q[0],B=Q[n/3|0],C=Q[2*n/3|0],
+ d=2*(A[0]*(B[1]-C[1])+B[0]*(C[1]-A[1])+C[0]*(A[1]-B[1]));if(Math.abs(d)<1e-9)return null;
+ const a2=A[0]**2+A[1]**2,b2=B[0]**2+B[1]**2,c2=C[0]**2+C[1]**2,
+ cx=(a2*(B[1]-C[1])+b2*(C[1]-A[1])+c2*(A[1]-B[1]))/d,cy=(a2*(C[0]-B[0])+b2*(A[0]-C[0])+c2*(B[0]-A[0]))/d,r=Math.hypot(A[0]-cx,A[1]-cy);
+ return Q.every(q=>Math.abs(Math.hypot(q[0]-cx,q[1]-cy)-r)<1e-6*Math.max(1,r))?{c:[cx,cy],r}:null}
+function explain(S){if(S.mv2)return null;
+ const AT=uu=>{const Pp=S.path.pts,n=Pp.length,t=uu*S.path.L;let lo=0,hi=n-1;while(lo<hi){const m=(lo+hi+1)>>1;if(Pp[m].s<=t)lo=m;else hi=m-1}
+  const a=Pp[lo],nx=lo+1<n,b=nx?Pp[lo+1]:S.path.closed?Pp[0]:a,d=(nx?Pp[lo+1].s:S.path.L)-a.s,k=d>1e-12&&!b.b?(t-a.s)/d:0;return[a.x+(b.x-a.x)*k,a.y+(b.y-a.y)*k]},
+ fe=fxe,fc=c=>'('+fe(c[0])+', '+fe(c[1])+')',nm=S.ob.name,E=S.ex,mv=S.mv,H=[],aux=[],Gx=(n,u)=>S.G(n,AT(u)),
+ isC=n=>ds(Gx(n,.13),Gx(n,.71))<1e-9&&ds(Gx(n,.13),Gx(n,.37))<1e-9,
+ dy=S.der.filter(d=>!isC(d.n)),sd=S.der.filter(d=>isC(d.n)),stat=Object.keys(S.pts).concat(sd.map(d=>d.n)),pos=n=>S.pts[n]||Gx(n,.3);
+ if(S.stat){if(S.given.length)H.push('<b>已知</b>：'+S.given.join('，')+'；求 '+esc(nm));S.trS.forEach(x=>H.push('<b>'+x[0]+'</b>：'+x[1]))}
+ H.push('<b>'+(S.stat?'作图（坐标）':'建系')+'</b>：'+Object.keys(S.pts).map(n=>n+fc(S.pts[n])).join('、')+(S.rhN?'（菱形其余顶点由边长与内角算出）':'')+sd.map(d=>'；'+(d.fd&&d.fd.t=='mid'?d.n+'为'+d.fd.a+d.fd.b+'中点，':'')+d.n+fc(Gx(d.n,.3))).join(''));
+ sd.forEach(d=>{const f=d.fd;if(f&&f.t=='pb'){const A=pos(f.a),B=pos(f.b),E=pos(d.n),t=((E[0]-A[0])*(B[0]-A[0])+(E[1]-A[1])*(B[1]-A[1]))/(ds(A,B)**2||1);
+  H.push('<b>折叠</b>：折叠后'+f.P+'与'+f.Q+'重合，所以折痕垂直平分'+f.P+f.Q+'，'+d.n+'在'+f.P+f.Q+'的垂直平分线上，'+d.n+f.P+' = '+d.n+f.Q+'。又'+d.n+'在'+f.a+f.b+'上，设'+d.n+' = '+f.a+' + t·'+f.a+f.b+'，解方程得 t = '+fe(t)+'，即 '+d.n+fc(E)+'。');
+  [[f.P,f.Q],[f.Q,f.P]].some(([u,v])=>{if(f.a!=u&&f.b!=u)return 0;const o=f.a==u?f.b:f.a,po=pos(o),pu=pos(u),lg=pos(v),dx=pu[0]-po[0],dz=pu[1]-po[1];
+   if(ds(po,lg)<1e-9||Math.abs((lg[0]-po[0])*dx+(lg[1]-po[1])*dz)>1e-9*Math.max(1,dx*dx+dz*dz))return 0;
+   const Lq=ds(po,pu),x=ds(po,E),lq=ds(po,lg);aux.push([d.n,v]);
+   H.push('<b>辅助线</b>：连接'+d.n+v+'（紫色）。折叠后'+u+'与'+v+'重合，所以'+d.n+u+' = '+d.n+v+'。设'+o+d.n+' = x，则'+d.n+v+' = '+d.n+u+' = '+o+u+' − x = '+fe(Lq)+' − x。在 Rt△'+v+o+d.n+' 中，'+v+o+'² + '+o+d.n+'² = '+v+d.n+'²，即 '+fe(lq)+'² + x² = ('+fe(Lq)+' − x)²，解得 x = '+fe(x)+'。');return 1})}});
+ const P0=S.path.pts,f0=P0[0],f1=P0[P0.length-1],seg=/^线段/.test(S.desc),
+ zz=v=>Math.abs(v)<1e-9?0:v,lin=(a,d)=>(a=zz(a),d=zz(d),!d?fe(a):(a?fe(a)+(d>0?'+':'−'):(d<0?'−':''))+(Math.abs(d)==1?'':fe(Math.abs(d)))+'t');
+ if(!S.stat)H.push('<b>动点</b>：'+(seg?mv+'在线段'+S.desc.slice(2,4)+'上，设'+mv+'（'+lin(f0.x,f1.x-f0.x)+', '+lin(f0.y,f1.y-f0.y)+'），0≤t≤1':mv+'沿'+esc(S.desc)+'运动'));
+ dy.forEach(d=>{const f=d.fd||{};
+  if(f.t=='fold'){const{src,a,b}=f,cs=[a,b].filter(c=>stat.includes(c));
+   H.push('<b>折叠</b>：'+d.n+'是'+src+'关于'+a+b+'的对称点，所以'+a+b+'垂直平分'+src+d.n+'，'+(cs.length==1&&stat.includes(src)?cs[0]+d.n+' = '+cs[0]+src+' = '+fe(ds(pos(cs[0]),pos(src)))+'（定长）':[a,b].map(c=>c+d.n+'='+c+src).join('，')))}
+  else if(f.t=='foot')H.push('<b>垂足</b>：'+d.n+'是'+f.pp+'在'+f.a+f.b+'上的垂足，'+f.pp+d.n+'⊥'+f.a+f.b);
+  else if(f.t=='mid')H.push('<b>中点</b>：'+d.n+'为'+f.a+f.b+'中点，'+d.n+'=('+f.a+'+'+f.b+')/2');
+  else if(f.t=='pt')H.push('<b>对称</b>：'+d.n+'是'+f.src+'关于点'+f.m+'的对称点');
+  else if(f.t=='pb')H.push('<b>折叠</b>：折叠后'+f.P+'与'+f.Q+'重合，所以折痕垂直平分'+f.P+f.Q+'，'+d.n+f.P+' = '+d.n+f.Q+'，'+d.n+'是这条垂直平分线与'+f.a+f.b+'的交点')});
+ let circ=null,cc=null,xp=[];
+ S.der.filter(d=>d.tr&&d.trail).forEach(d=>{const r=fitC(d.trail);if(r&&!circ){circ=r;const cn=stat.find(n=>ds(pos(n),r.c)<1e-6);cc={n:d.n,cn,c:cn?pos(cn):r.c,r:r.r};
+  H.push('<b>轨迹</b>：'+d.n+'的轨迹是以'+(cn||fc(r.c))+'为圆心、半径为'+fe(r.r)+'的圆（弧）');aux.push([cn||r.c,d.n])}});
+ const con=S.mx-S.mn<1e-9;let done=false;const os0=S.osrc||'';
+ if(S.ferm){const f=S.ferm,[a0,b0,c0]=f.V,pA=pos(a0),pB=pos(b0),pC=pos(c0),P=f.P;
+  if(f.vx){H.push('<b>特殊情形</b>：△'+f.V.join('')+'有一个内角不小于120°，P取在钝角的顶点'+f.vx+'时距离和最小，最小值 = 另外两边之和 = '+fe(S.mn)+'。')}
+  else{const rot=(p,o,g)=>[o[0]+(p[0]-o[0])*Math.cos(g)-(p[1]-o[1])*Math.sin(g),o[1]+(p[0]-o[0])*Math.sin(g)+(p[1]-o[1])*Math.cos(g)],c1=rot(pA,pB,Math.PI/3),c2=rot(pA,pB,-Math.PI/3),A2=ds(c1,pC)>ds(c2,pC)?c1:c2,m=ds(A2,pC),ba=ds(pB,pA),bc=ds(pB,pC),
+    cs=((A2[0]-pB[0])*(pC[0]-pB[0])+(A2[1]-pB[1])*(pC[1]-pB[1]))/(ba*bc),a2=a0+"'",p2=P+"'";const pP=pos(P),Pp=rot(pP,pB,(A2===c1?1:-1)*Math.PI/3);xp.push({n:a2,p:A2},{n:p2,p:Pp});aux.push([A2,pC],[pB,A2],[pB,Pp],[pP,Pp],[A2,Pp]);
+   H.push('<b>思路</b>：三个距离首尾不相连，要把它们“拉成一条线”。把△'+a0+b0+P+'绕点'+b0+'向外旋转60°，得到△'+a2+b0+p2+'（紫色）。');
+   H.push('<b>等边三角形</b>：旋转得 '+b0+P+' = '+b0+p2+'，∠'+P+b0+p2+' = 60°，所以△'+b0+P+p2+'是等边三角形，'+P+p2+' = '+P+b0+'。');
+   H.push('<b>等量代换</b>：旋转不改变长度，'+a2+p2+' = '+a0+P+'。于是 '+P+a0+' + '+P+b0+' + '+P+c0+' = '+a2+p2+' + '+p2+P+' + '+P+c0+' ≥ '+a2+c0+'（两点之间线段最短）。');
+   H.push('<b>求'+a2+c0+'</b>：'+b0+a2+' = '+b0+a0+' = '+fe(ba)+'，'+b0+c0+' = '+fe(bc)+'，∠'+a2+b0+c0+' = ∠'+a0+b0+c0+' + 60° = '+fe(Math.acos(cs)*180/Math.PI)+'°。由余弦定理，'+a2+c0+'² = '+b0+a2+'² + '+b0+c0+'² − 2·'+b0+a2+'·'+b0+c0+'·cos∠'+a2+b0+c0+' = '+fe(ba*ba)+' + '+fe(bc*bc)+' − 2×'+fe(ba)+'×'+fe(bc)+'×'+fe(cs)+' = '+fe(m*m)+'，所以 '+a2+c0+' = '+fe(m)+'。');
+   H.push('<b>取等</b>：当 '+a2+'、'+p2+'、'+P+'、'+c0+' 四点共线时取等号，这时 ∠'+a0+P+b0+' = ∠'+b0+P+c0+' = ∠'+c0+P+a0+' = 120°（P就是费马点），所以最小值 = '+fe(m)+'。')}
+  done=true}
+ if(S.eqa&&S.ob.k&&S.ob.k.t=='len'&&S.ob.k.ts[0].includes(S.eqa.apex)){const q=S.eqa,[b0,c0]=q.base,d0=q.apex,t0=[...S.ob.k.ts[0]].find(c=>c!=d0),pT=pos(t0),dd=(x,y)=>ds(pos(x),pos(y)),bc=dd(b0,c0),tb=dd(t0,b0),tc=dd(t0,c0),rt=Math.abs((pos(b0)[0]-pT[0])*(pos(c0)[0]-pT[0])+(pos(b0)[1]-pT[1])*(pos(c0)[1]-pT[1]))<1e-9*Math.max(1,tb*tc),ad=dd(t0,d0);
+  H.push('<b>等边三角形</b>：△'+q.n+'是等边三角形，所以 '+b0+d0+' = '+b0+c0+' = '+fe(bc)+'，∠'+c0+b0+d0+' = 60°。');
+  H.push('<b>角的关系</b>：'+d0+'与'+t0+'在'+b0+c0+'的两侧，所以 ∠'+t0+b0+d0+' = ∠'+t0+b0+c0+' + 60°。');
+  H.push('<b>余弦定理</b>：'+t0+d0+'² = '+t0+b0+'² + '+b0+d0+'² − 2·'+t0+b0+'·'+b0+d0+'·cos(∠'+t0+b0+c0+' + 60°)。展开 cos(∠'+t0+b0+c0+' + 60°) = ½cos∠'+t0+b0+c0+' − (√3/2)sin∠'+t0+b0+c0+'。');
+  H.push(rt?'<b>代入</b>：Rt△'+t0+b0+c0+'中 '+b0+c0+'·cos∠'+t0+b0+c0+' = '+t0+b0+'，'+b0+c0+'·sin∠'+t0+b0+c0+' = '+t0+c0+'，所以 '+t0+d0+'² = '+t0+b0+'² + '+b0+c0+'² − '+t0+b0+'² + √3·'+t0+b0+'·'+t0+c0+' = '+b0+c0+'² + √3·'+t0+b0+'·'+t0+c0+' = '+fe(bc*bc)+' + √3×'+fe(tb)+'×'+fe(tc)+' = '+fe(ad*ad)+'。':'<b>代入</b>：数值代入得 '+t0+d0+'² = '+fe(ad*ad)+'。');
+  aux.push([t0,d0]);done=true}
+ if(S.sqax&&!S.stat){const q=S.sqax,a=q.a,T0=[...nm].find(c=>c==q.aX||c==q.aY),Dv=T0==q.aY?q.Y:q.X;
+  if(T0&&nm.includes('O')){const oe=a/2,te=a*Math.sqrt(5)/2,bd=oe+te;aux.push(['O',q.EL],[T0,q.EL]);
+   H.push('<b>辅助线</b>：'+q.X+q.Y+'是正方形的边，'+q.X+q.Y+' = '+fe(a)+'。取'+q.X+q.Y+'的中点'+q.EL+'，连接O'+q.EL+'、'+T0+q.EL+'（紫色）。');
+   H.push('<b>求O'+q.EL+'</b>：△O'+q.X+q.Y+'中∠'+q.X+'O'+q.Y+' = 90°，'+q.EL+'是斜边'+q.X+q.Y+'的中点，所以 O'+q.EL+' = ½'+q.X+q.Y+' = '+fe(oe)+'（直角三角形斜边上的中线等于斜边的一半），这个值不随位置变化。');
+   H.push('<b>求'+T0+q.EL+'</b>：Rt△'+T0+Dv+q.EL+'中，'+T0+Dv+' = '+fe(a)+'，'+Dv+q.EL+' = '+fe(oe)+'，所以 '+T0+q.EL+' = √('+fe(a)+'² + '+fe(oe)+'²) = '+fe(te)+'，也是定值。');
+   H.push('<b>放缩</b>：在△O'+q.EL+T0+'中，O'+T0+' ≤ O'+q.EL+' + '+q.EL+T0+'（'+fe(oe)+' + '+fe(te)+'）= '+fe(bd)+'，当O、'+q.EL+'、'+T0+'三点共线时取等号。');
+   H.push('<b>检验</b>：'+(Math.abs(S.mx-bd)<1e-6?'数值扫描显示这个位置在滑动范围内能取到，所以 O'+T0+' 的最大值是 '+fe(bd)+'。':'取等位置不在滑动范围内，最大值只能在别处取得，约为 '+f3(S.mx)+'。'));done=true}}
+ if(S.fa&&/面积/.test(nm)){const f=S.fa,c=f.c,R=c/2/Math.sin(f.th),yO=c/2/Math.tan(f.th),hm=yO+R,[A0,B0,P0]=[f.A,f.B,f.P];circ={c:[c/2,yO],r:R};xp.push({n:'O₁',p:[c/2,yO]});aux.push([[c/2,0],[c/2,hm]],[[c/2,yO],[0,0]],[[c/2,yO],[c,0]]);
+  H.push('<b>定弦定角</b>：'+A0+B0+' = '+fe(c)+' 固定，∠'+A0+P0+B0+' = '+fe(f.th*180/Math.PI)+'° 固定，所以'+P0+'在△'+A0+B0+P0+'外接圆的一段圆弧上（紫色圆）。');
+  H.push('<b>外接圆</b>：由正弦定理 2R = '+A0+B0+'÷sin∠'+A0+P0+B0+' = '+fe(c)+'÷'+fe(Math.sin(f.th))+'，R = '+fe(R)+'；圆心O₁在'+A0+B0+'的垂直平分线上，到'+A0+B0+'的距离是 '+fe(Math.abs(yO))+'。');
+  H.push('<b>面积</b>：S = ½·'+A0+B0+'·h（h是'+P0+'到'+A0+B0+'的距离），'+A0+B0+'不变，h最大时面积最大。');
+  H.push('<b>求最大高度</b>：'+P0+'在圆弧的最高点（O₁正上方）时 h 最大，h最大 = '+fe(yO)+' + '+fe(R)+'（圆心到'+A0+B0+'的有向距离加半径）。');
+  H.push('<b>求最大面积</b>：S最大 = ½×'+fe(c)+'×('+fe(hm)+') = '+fe(c*hm/2)+'。');done=true}
+ if(S.rc&&nm=='AP+DQ'&&pos('A')&&pos('D')&&pos('C')){const h=ds(pos('A'),pos('D')),w=ds(pos('D'),pos('C')),mn=Math.sqrt(h*h+(h+w)*(h+w)),ts=h*h/(h+w);
+  H.push('<b>设未知数</b>：设 DP = BQ = t（0 ≤ t ≤ '+fe(h)+'）。');
+  H.push('<b>表示线段</b>：Rt△ADP中，AP = √(AD² + DP²) = √(t² + '+fe(h)+'²)；BQ = t，所以 CQ = BC − t = '+fe(h)+' − t，Rt△DCQ中，DQ = √(DC² + CQ²) = √('+fe(w)+'² + ('+fe(h)+' − t)²)。');
+  const pn=S.mv,qn=S.der[0].n,gn=['G','H','K','L'].find(c=>!(c in S.pts)&&!S.der.some(d=>d.n==c)&&c!=pn&&c!=qn),Dp=pos('D');
+  S.der.push({n:gn,links:[],f:e=>[e[pn][0]-(e[qn][1]-Dp[1]),e[pn][1]+(e[qn][0]-Dp[0])]});S.der[S.der.length-1].trail=S.path.pts.map(q=>({p:S.G(gn,[q.x,q.y]),b:q.b}));aux.push([pn,gn],['A',gn]);
+  H.push('<b>辅助线</b>：把线段DQ绕点D逆时针旋转90°，再平移到以'+pn+'为起点，得到线段'+pn+gn+'（紫色），连接A'+gn+'（紫色）。这样 '+pn+gn+' = DQ。');
+  H.push('<b>拼成折线</b>：AP + DQ = AP + '+pn+gn+' ≥ A'+gn+'（两点之间线段最短）。AP的水平、竖直分量是 t、'+fe(h)+'，'+pn+gn+'的分量是（'+fe(h)+' − t）、'+fe(w)+'，所以'+gn+'比A向右 t + ('+fe(h)+' − t) = '+fe(h)+'，向上 '+fe(h)+' + '+fe(w)+' = '+fe(h+w)+'，A'+gn+' = √('+fe(h)+'² + '+fe(h+w)+'²) = '+fe(mn)+'。');
+  H.push('<b>取等</b>：折线拉直时两个直角三角形相似，t ÷（'+fe(h)+' − t）= '+fe(h)+' ÷ '+fe(w)+'，解得 t = '+fe(ts)+'，在0到'+fe(h)+'之间，能取到。最小值是 '+fe(mn)+'。');done=true}
+ const rtx=v=>{const e=ext(v);return e&&!e.t.length?Math.abs(e.p)+' : '+e.q:fe(v)};
+ if(S.lc&&S.ob.k&&S.ob.k.t=='lin'&&!con&&E.mn.length){const{o,r}=S.lc,Kk=S.ob.k,C0=pos(o),Dn=mv;let hit=null;
+  [[0,1],[1,0]].forEach(([i,j])=>{if(hit)return;const X=Kk.ts[i],Y=Kk.ts[j],px=X.replace(Dn,''),py=Y.replace(Dn,'');
+   if(X.includes(Dn)&&Y.includes(Dn)&&pos(px)&&pos(py)){const k=Kk.c[j]/Kk.c[i],dY=ds(C0,pos(py));if(dY>1e-9&&Math.abs(k-r/dY)<1e-9)hit={px,py,k,dY,cm:Kk.c[i]}}});
+  if(hit){const{px,py,k,dY,cm}=hit,Y0=pos(py),X0=pos(px),ce=r*r/dY,E0=[C0[0]+(Y0[0]-C0[0])*ce/dY,C0[1]+(Y0[1]-C0[1])*ce/dY],ae=ds(X0,E0),ac=ds(X0,C0),
+   q90=Math.abs((X0[0]-C0[0])*(Y0[0]-C0[0])+(X0[1]-C0[1])*(Y0[1]-C0[1]))<1e-9*Math.max(1,ac*dY),cmS=cm==1?'':fe(cm);
+   circ={c:C0,r};xp.push({n:'E',p:E0});aux.push([o,Dn],[Dn,E0],[px,E0],[py,Dn]);
+   H.push('<b>轨迹</b>：'+Dn+o+' = '+fe(r)+'（定长），所以'+Dn+'在以'+o+'为圆心、半径为'+fe(r)+'的圆上'+(/内/.test(S.desc)?'；又'+Dn+'在三角形内部，轨迹是这个圆在三角形内的一段弧（蓝色）。':'。'));
+   H.push('<b>辅助线（阿氏圆）</b>：系数比 '+fe(k)+' 恰好等于 '+Dn+o+'÷'+o+py+' = '+fe(r)+'÷'+fe(dY)+'。在'+o+py+'上取点E，使 '+o+'E = '+Dn+o+'²÷'+o+py+' = '+fe(r)+'²÷'+fe(dY)+' = '+fe(ce)+'，连接'+Dn+'E、'+px+'E（紫色）。');
+   H.push('<b>相似</b>：'+o+'E÷'+o+Dn+' = '+o+Dn+'÷'+o+py+' = '+fe(k)+'，且∠E'+o+Dn+' = ∠'+Dn+o+py+'（公共角），所以 △'+o+'E'+Dn+' ∽ △'+o+Dn+py+'，得 '+Dn+'E÷'+py+Dn+' = '+fe(k)+'，即 '+Dn+'E = '+fe(k)+'·'+py+Dn+'。');
+   H.push('<b>转化</b>：'+nm+' = '+(cmS?cmS+'×(':'')+px+Dn+' + '+fe(k)+'·'+py+Dn+(cmS?')':'')+' = '+(cmS?cmS+'×(':'')+px+Dn+' + '+Dn+'E'+(cmS?')':'')+' ≥ '+(cmS?cmS+'×':'')+px+'E（两点之间线段最短），当'+px+'、'+Dn+'、E三点共线时取等。');
+   H.push('<b>求值</b>：'+(q90?'∠'+px+o+py+' = 90°，在 Rt△'+px+o+'E 中，'+px+'E² = '+px+o+'² + '+o+'E² = '+fe(ac)+'² + '+fe(ce)+'² = '+fe(ac*ac+ce*ce)+'，所以 '+px+'E = '+fe(ae):px+'E = '+fe(ae))+'。最小值 = '+(cmS?cmS+'×'+fe(ae)+' = ':'')+fe(cm*ae)+'。');
+   H.push('<b>检验</b>：'+(Math.abs(S.mn-cm*ae)<2e-4*Math.max(1,cm*ae)?'线段'+px+'E与圆的交点在'+Dn+'的运动范围内，能取到，最小值就是 '+fe(cm*ae)+'。':'取等位置不在'+Dn+'的运动范围内，最小值只能在端点处取得，约为 '+f3(S.mn)+'。'));done=true}}
+ else if(S.ob.k&&(S.stat||con)){const K=S.ob.k,L=(a,b)=>ds(pos(a),pos(b)),T=(a,b)=>a+b+' = '+fe(L(a,b)),Ar=w=>{let t=0;[...w].forEach((c,i,r)=>{const a=pos(c),b=pos(r[(i+1)%r.length]);t+=a[0]*b[1]-b[0]*a[1]});return Math.abs(t)/2},
+  isS=w=>[...w].every(c=>stat.includes(c)),nz=v=>Math.abs(v)<1e-9,
+  ort=(o,u,t)=>{const a=pos(o),b=pos(u),c=pos(t);return Math.abs((b[0]-a[0])*(c[0]-a[0])+(b[1]-a[1])*(c[1]-a[1]))<1e-9*Math.max(1,ds(a,b)*ds(a,c))},
+  ang=(o,u,t)=>{const x=L(o,u),y=L(o,t),z=L(u,t);return Math.acos(Math.max(-1,Math.min(1,(x*x+y*y-z*z)/(2*x*y))))*180/Math.PI},
+  fo=(v,p,q)=>{const a=pos(p),b=pos(q),c=pos(v),dx=b[0]-a[0],dz=b[1]-a[1],t=((c[0]-a[0])*dx+(c[1]-a[1])*dz)/(dx*dx+dz*dz);return[a[0]+t*dx,a[1]+t*dz]},
+  tri=w=>[...w].map((c,i,r)=>({v:c,p:r[(i+1)%3],q:r[(i+2)%3],l:L(r[(i+1)%3],r[(i+2)%3])}));
+  if(K.t=='angle'){const[a,b,c]=K.n,n3=K.n.join(''),x=L(b,a),y=L(b,c),z=L(a,c),dg=ang(b,a,c),ap=nz(x-z)?a:nz(y-z)?c:null;aux.push([a,c]);
+   H.push('<b>辅助线</b>：连接'+a+c+'（紫色），把∠'+n3+'放进△'+n3+'中。'+T(b,a)+'，'+T(b,c)+'，'+T(a,c)+'。');
+   H.push('<b>求角</b>：'+(ort(b,a,c)?b+a+'² + '+b+c+'² = '+fe(x*x)+' + '+fe(y*y)+' = '+fe(z*z)+' = '+a+c+'²，由勾股定理逆定理，∠'+n3+' = 90°。'
+    :ort(a,b,c)?'Rt△'+n3+'中∠'+a+' = 90°，'+b+a+'是邻边、'+b+c+'是斜边，cos∠'+n3+' = '+b+a+'÷'+b+c+' = '+fe(x/y)+'，所以 ∠'+n3+' = '+fe(dg)+'°。':ort(c,a,b)?'Rt△'+n3+'中∠'+c+' = 90°，'+b+c+'是邻边、'+b+a+'是斜边，cos∠'+n3+' = '+b+c+'÷'+b+a+' = '+fe(y/x)+'，所以 ∠'+n3+' = '+fe(dg)+'°。':nz(x-y)&&nz(y-z)?'三边相等，是等边三角形，∠'+n3+' = 60°。'
+    :nz(x-y)?(isS(n3)&&(mp=>{aux.push([b,mp]);xp.push({n:'M',p:mp})})([(pos(a)[0]+pos(c)[0])/2,(pos(a)[1]+pos(c)[1])/2]),b+a+' = '+b+c+'，取'+a+c+'中点M，连接'+b+'M（紫色），则'+b+'M⊥'+a+c+'，'+a+'M = '+fe(z/2)+'；Rt△'+a+'M'+b+'中 sin(∠'+n3+'÷2) = '+a+'M÷'+b+a+' = '+fe(z/2/x)+'，所以 ∠'+n3+' = '+fe(dg)+'°。')
+    :ap?(ap==a?b+a+' = '+a+c:b+c+' = '+a+c)+'，△'+n3+'是等腰三角形，顶角是∠'+ap+' = '+fe(ang(ap,b,ap==a?c:a))+'°，所以 ∠'+b+' = (180° − ∠'+ap+')÷2 = '+fe(dg)+'°。'
+    :'由余弦定理，cos∠'+n3+' = ('+b+a+'²+'+b+c+'²−'+a+c+'²)÷(2·'+b+a+'·'+b+c+') = '+fe((x*x+y*y-z*z)/(2*x*y))+'，所以 ∠'+n3+' = '+fe(dg)+'°。'))}
+  else if(K.t=='len'&&K.ts.length==1){const[X,Y]=[...K.ts[0]];let dn=0;[[X,Y],[Y,X]].forEach(([m,o])=>{const d=S.der.find(q=>q.n==m&&q.fd&&q.fd.t=='mid');
+   if(!dn&&d&&ort(o,d.fd.a,d.fd.b)){dn=1;const a=d.fd.a,b=d.fd.b,ab=L(a,b);aux.push([a,o],[o,b]);H.push('<b>辅助线</b>：连接'+a+o+'、'+o+b+'（紫色）。∠'+a+o+b+' = 90°，△'+a+o+b+'是直角三角形，'+m+'是斜边'+a+b+'的中点，所以 '+m+o+' = ½'+a+b+' = ½×'+fe(ab)+' = '+fe(ab/2)+'（直角三角形斜边上的中线等于斜边的一半）。')}})}
+  else if(K.t=='area'){const w=K.n.join('');
+   if(w.length==3){const tt=tri(w),rv=tt.find(o=>ort(o.v,o.p,o.q));
+    if(rv){H.push('<b>辅助线</b>：△'+w+'中∠'+rv.v+' = 90°，两条直角边'+rv.v+rv.p+'、'+rv.v+rv.q+'互为底和高，不用再作辅助线。');H.push('<b>求面积</b>：S = ½·'+rv.v+rv.p+'·'+rv.v+rv.q+' = ½×'+fe(L(rv.v,rv.p))+'×'+fe(L(rv.v,rv.q))+' = '+fe(Ar(w))+'。')}
+    else{const o=tt.reduce((m,q)=>q.l>m.l?q:m),hp=fo(o.v,o.p,o.q),hh=ds(pos(o.v),hp);if(isS(w)){aux.push([pos(o.v),hp]);xp.push({n:'H',p:hp})}
+     H.push('<b>辅助线</b>：作高 '+o.v+'H⊥'+o.p+o.q+'（H为垂足，紫色），以最长边'+o.p+o.q+'为底。');H.push('<b>求面积</b>：'+T(o.p,o.q)+'，高 '+o.v+'H = '+fe(hh)+'，S = ½·'+o.p+o.q+'·'+o.v+'H = '+fe(Ar(w))+'。')}}
+   else{const ts=[];for(let i=1;i<w.length-1;i++)ts.push(w[0]+w[i]+w[i+1]);for(let i=2;i<w.length-1;i++)aux.push([w[0],w[i]]);
+    H.push('<b>辅助线</b>：连接'+[...w].slice(2,-1).map(c=>w[0]+c).join('、')+'（紫色），把图形分成'+ts.length+'个三角形。');H.push('<b>求面积</b>：S = '+ts.map(t=>'S△'+t).join(' + ')+' = '+ts.map(t=>fe(Ar(t))).join(' + ')+' = '+fe(Ar(w))+'。')}}
+  else if(K.t=='perim'){const w=K.n.join(''),sd=K.n.map((c,i,a)=>[c,a[(i+1)%a.length]]),ls=sd.map(([a,b])=>L(a,b)),eq=ls.every(x=>nz(x-ls[0])),sum=ls.reduce((x,y)=>x+y,0),sq=S.sqb&&S.sqb.n==w;
+   if(sq&&S.rhN){const[a,b]=S.sqb.base,rh=[...S.rhN],ia=rh.indexOf(a),ib=rh.indexOf(b),ac=L(a,b);aux.push([a,b]);
+    if(ia>=0&&ib>=0&&Math.abs(ia-ib)==2){const V=rh.find(c=>c!=a&&c!=b),va=L(V,a),dg=ang(V,a,b);
+     H.push('<b>菱形的性质</b>：菱形'+S.rhN+'的四条边都相等，所以 '+V+a+' = '+V+b+' = '+fe(va)+'。');
+     H.push('<b>求'+a+b+'（'+a+b+'是菱形的对角线，也是正方形的边）</b>：在△'+a+V+b+'中，'+V+a+' = '+V+b+'，∠'+V+' = '+fe(dg)+'°。'+(nz(dg-60)?'有一个角是60°的等腰三角形是等边三角形，所以 '+a+b+' = '+V+a+' = '+fe(ac)+'。':nz(dg-90)?'由勾股定理，'+a+b+'² = '+fe(va)+'² + '+fe(va)+'² = '+fe(ac*ac)+'，所以 '+a+b+' = '+fe(ac)+'。':'由余弦定理，'+a+b+'² = '+V+a+'² + '+V+b+'² − 2·'+V+a+'·'+V+b+'·cos'+V+' = '+fe(va*va)+' + '+fe(va*va)+' − 2×'+fe(va)+'×'+fe(va)+'×'+fe(Math.cos(dg*Math.PI/180))+' = '+fe(ac*ac)+'，所以 '+a+b+' = '+fe(ac)+'。'))}
+    else H.push('<b>菱形的性质</b>：'+a+b+'是菱形'+S.rhN+'的一条边，边长 = '+fe(ac)+'。');
+    H.push('<b>正方形的性质</b>：正方形'+w+'的四条边都相等，而'+a+b+'是它的一条边，所以每条边都等于 '+a+b+' = '+fe(ac)+'。');
+    H.push('<b>求周长</b>：周长 = 4 × 边长 = 4 × '+fe(ac)+' = '+fe(4*ac)+'。')}
+   else H.push('<b>求周长</b>：'+sd.map(([a,b])=>a+b+' = '+fe(L(a,b))).join('，')+'；周长 = '+(eq?ls.length+' × '+fe(ls[0]):ls.map(fe).join(' + '))+' = '+fe(sum)+'。')}
+  else if(K.t=='ratio'){const A=K.A,B=K.B,s1=Ar(A),s2=Ar(B),rv=s1/s2;
+   if(A.length==3&&B.length==3){const t1=tri(A),t2=tri(B);let hit=null;
+    ['h','b'].forEach(m=>t1.forEach(u=>t2.forEach(v=>{if(hit)return;if(m=='h'?nz(2*s1/u.l-2*s2/v.l):nz(u.l-v.l))hit={u,v,m}})));
+    const alt=o=>{const hp=fo(o.v,o.p,o.q);if(isS(A+B)){aux.push([pos(o.v),hp]);xp.push({n:'H'+'₁₂'[xp.filter(q=>/^H/.test(q.n)).length%2],p:hp})}return ds(pos(o.v),hp)};
+    if(hit){const{u,v,m}=hit,h1=alt(u),h2=alt(v);
+     H.push('<b>辅助线</b>：分别作高 '+u.v+'H₁⊥'+u.p+u.q+'、'+v.v+'H₂⊥'+v.p+v.q+'（紫色）。');
+     H.push('<b>面积比</b>：'+(m=='h'?'两条高相等（都是'+fe(h1)+'），等高三角形面积比等于底之比：'+u.p+u.q+' : '+v.p+v.q+' = '+fe(u.l)+' : '+fe(v.l):'两个底相等（都是'+fe(u.l)+'），等底三角形面积比等于高之比：'+fe(h1)+' : '+fe(h2))+' = '+rtx(rv)+'。')}
+    else{const sa=t1.map(o=>o.l).sort((x,y)=>x-y),sb=t2.map(o=>o.l).sort((x,y)=>x-y),kk=sa[0]/sb[0];
+     if(sa.every((x,i)=>nz(x/sb[i]-kk)))H.push('<b>相似</b>：△'+A+'与△'+B+'三边对应成比例，相似比 '+rtx(kk)+'，相似三角形面积比等于相似比的平方：'+rtx(kk*kk)+'。');
+     else H.push('<b>面积比</b>：S△'+A+' = '+fe(s1)+'，S△'+B+' = '+fe(s2)+'，比 = '+rtx(rv)+'。')}}
+   else H.push('<b>面积比</b>：S₁ = '+fe(s1)+'，S₂ = '+fe(s2)+'，比 = '+rtx(rv)+'。')}}
+ if(!con&&cc&&nm.length==2&&nm[0]==cc.n&&stat.includes(nm[1])&&E.mn.length){
+  const B=nm[1],d=ds(cc.c,pos(B)),r=cc.r,T=cc.cn||'O',lo=Math.abs(d-r);aux.push([cc.cn||cc.c,B]);
+  H.push('<b>辅助线</b>：连接'+T+B+'（紫色实线），'+T+B+' = '+fe(d)+'。由三角形不等式，'+nm+' ≥ '+(d>=r?T+B+' − '+T+nm[0]+' = '+fe(d)+' − '+fe(r):T+nm[0]+' − '+T+B+' = '+fe(r)+' − '+fe(d))+((d>=r?fxs(d)+'−'+fxs(r):fxs(r)+'−'+fxs(d))==fxs(lo)?'':' = '+fe(lo))+'，当'+nm[0]+'落在'+(d>=r?'线段':'射线')+T+B+'上时取等号。');
+  H.push(Math.abs(S.mn-lo)<1e-7?'<b>检验</b>：取等时 '+mv+fc(E.rf[E.mn[0]].p)+'，在'+mv+'的运动范围内，能取到，所以最小值为 '+fe(lo)+'。':'<b>检验</b>：取等位置不在'+mv+'的运动范围内，最小值只能在端点处取得，约为 '+f3(S.mn)+'。');done=true}
+ const kc=S.ob.k&&S.ob.k.t=='coord',Tt=S.tm?S.tm.T:1,tv=S.tm?'t':'λ',segn=/^线段/.test(S.desc)?S.desc.slice(2,4):null,
+  sgn=(x,v)=>(x<0?' − ':' + ')+(v&&Math.abs(Math.abs(x)-1)<1e-9?'':fe(Math.abs(x)))+(v||'');
+ if(S.tm&&S.at!=null){const t0=S.at,pr=[];S.tm.ks.forEach(q=>{const len=ds(pos(q.f),pos(q.t)),tr=q.v*t0,rm=len-tr;pr.push([q.f+q.n,tr],[q.n+q.f,tr],[q.t+q.n,rm],[q.n+q.t,rm]);
+   H.push('<b>路程</b>：t = '+fe(t0)+' 秒时，'+q.n+'走了 '+fe(q.v)+'×'+fe(t0)+' = '+fe(tr)+'，距'+q.t+'还有 '+fe(len)+' − '+fe(tr)+' = '+fe(rm)+'。')});
+  const tk2=[...new Set([...os0.matchAll(/(?<![A-Z])([A-Z]{2})(?![A-Z])/g)].map(k=>k[1]))].filter(w=>pr.some(x=>x[0]==w));H.push('<b>结论</b>：'+tk2.map(w=>w+' = '+fe(pr.find(x=>x[0]==w)[1])).join('，')+'。')}
+ const tgConc=()=>{const rts=S.roots||[];
+  if(segn||S.tm){H.push('<b>设未知数</b>：'+(S.tm?'设经过 t 秒（0 ≤ t ≤ '+fe(Tt)+'）':'设 '+mv+' = '+segn[0]+' + λ·'+segn+'（0 ≤ λ ≤ 1）')+'，把目标量写成 '+tv+' 的式子。');
+   S.tgs.forEach(T=>{const y=t=>T.f(AT(t/Tt)),y0=y(0),y1=y(Tt/2),y2=y(Tt),Aq=(2*y2-4*y1+2*y0)/(Tt*Tt),Bq=(4*y1-3*y0-y2)/Tt,Cq=y0-T.v;
+    if(Math.abs(Aq*(Tt/4)**2+Bq*Tt/4+y0-y(Tt/4))>1e-9*(1+Math.abs(y0)))return;let tx;
+    if(Math.abs(Aq)>1e-10){const b=Bq/Aq,c=Cq/Aq,dl=b*b-4*c;tx=(T.lab?T.lab+'：':'')+tv+'²'+(Math.abs(b)>1e-10?sgn(b,tv):'')+(Math.abs(c)>1e-10?sgn(c):'')+' = 0，Δ = '+fe(dl)+(dl<-1e-9?' < 0，方程没有实数根。':'，'+tv+' = '+(dl<1e-9?fe(-b/2):fe((-b+Math.sqrt(dl))/2)+' 或 '+fe((-b-Math.sqrt(dl))/2))+'。')}
+    else tx=(T.lab?T.lab+'：':'')+tv+' = '+fe(-Cq/Bq)+'。';H.push('<b>列方程</b>：'+tx)})}
+  H.push('<b>结论</b>：'+(rts.length?rts.map(r=>(r.lab?r.lab+'：':'')+(S.tm?'t = '+fe(r.u*Tt)+' 秒，':'')+mv+fc(r.p)).join('；')+'。':'没有满足条件的位置。目标量在运动过程中的取值范围是 '+fe(S.mn)+' ≤ '+esc(S.ob.multi?'目标量':nm)+' ≤ '+fe(S.mx)+'。'));
+  const K=S.ob.k;if(K&&K.t=='split'&&rts.length)rts.forEach(r=>{const c=pos(K.cV),dx=r.p[0]-c[0],dz=r.p[1]-c[1];H.push('<b>直线'+K.cV+mv+'</b>：过 '+K.cV+fc(c)+' 和 '+mv+fc(r.p)+'，'+(Math.abs(dx)<1e-9?'这是竖直线 x = '+fe(c[0]):'斜率 k = '+fe(dz/dx)+'，解析式 y = '+fe(dz/dx)+'x'+(Math.abs(c[1]-dz/dx*c[0])<1e-9?'':sgn(c[1]-dz/dx*c[0])))+'。')})};
+ const kcConc=()=>{const n=S.ob.k.n;if(S.rhN){const[r0,r1,r2,r3]=[...S.rhN];if(n==r2)H.push('<b>平行四边形</b>：菱形'+S.rhN+'的对边平行且相等，所以 '+n+' = '+r1+' + '+r3+' − '+r0+' = '+fc(pos(r1))+' + '+fc(pos(r3))+' − '+fc(pos(r0))+'。')}H.push('<b>结论</b>：'+n+fc(pos(n))+'。')};
+ const ft=S.der.filter(d=>d.fd&&d.fd.t=='foot');
+ if(con&&ft.length==2&&ft[0].fd.pp==ft[1].fd.pp){const[g1,g2]=[ft[0].fd,ft[1].fd],vx=[...g1.a+g1.b].find(c=>(g2.a+g2.b).includes(c));
+  if(vx){const o1=g1.a==vx?g1.b:g1.a,o2=g2.a==vx?g2.b:g2.a,pp=g1.pp,V=pos(vx),Q1=pos(o1),Q2=pos(o2),L1=ds(V,Q1),L2=ds(V,Q2),Sa=Math.abs((Q1[0]-V[0])*(Q2[1]-V[1])-(Q2[0]-V[0])*(Q1[1]-V[1]))/2;aux.push([vx,pp]);
+   H.push('<b>辅助线</b>：连接'+vx+pp+'（紫色实线），用面积法：S△'+vx+o1+o2+' = S△'+vx+o1+pp+' + S△'+vx+o2+pp+' = ½·'+vx+o1+'·'+pp+ft[0].n+' + ½·'+vx+o2+'·'+pp+ft[1].n+'。其中 S△'+vx+o1+o2+' = '+fe(Sa)+'，'+vx+o1+' = '+fe(L1)+'，'+vx+o2+' = '+fe(L2)+(Math.abs(L1-L2)<1e-9?'，二者相等，提取公因式得 '+pp+ft[0].n+' + '+pp+ft[1].n+' = 2S÷'+vx+o1+' = '+fe(2*Sa/L1)+'。':'。'))}}
+ if(S.tgs){tgConc()}else if(kc){kcConc()}else if(S.tm&&S.at!=null){}else if(con&&S.stat)H.push('<b>结论</b>：'+esc(nm)+' = <b>'+fxh(S.mx)+'</b>'+(S.fixedKw?'（定值）':''));
+ else if(con){const us=S.path.closed?[0,1/3,2/3]:[0,.5,1];
+  H.push('<b>特殊位置法</b>：'+us.map(u=>{const p=AT(u);return'当'+mv+fc(p)+'时，'+nm+' = '+fe(S.ob.f(p))}).join('；')+'，结果相同，猜想是定值。');
+  H.push('<b>验证</b>：在全程约1500个位置上，'+esc(nm)+'的最大值与最小值之差小于10⁻⁹，所以它恒等于 <b>'+fxh(S.mx)+'</b>（定值）。')}
+ else{if(!done)H.push('<b>目标量</b>：'+esc(nm)+' 随'+mv+'的位置变化，在运动范围内求最值（点下方结果可在图上定位）。');
+  const hM=/最大/.test(os0),hm_=/最小/.test(os0),Wmax=hM||!hm_,Wmin=hm_||!hM,row=(t,ar)=>ar.length?t+'值 '+fe(E.rf[ar[0]].v)+'，此时'+ar.map(j=>mv+fc(E.rf[j].p)).join('或'):'';
+  H.push('<b>结论</b>：'+[Wmax?row('最大',E.mx):'',Wmin?row('最小',E.mn):''].filter(Boolean).join('；')+(S.fixedKw?'。它不是定值，会随'+mv+'变化。':''))}
+ return{H,aux,circ,pts:xp}}
+// ---- 视图与绘制 ----
+let S=null,W=0,H=0,dpr=1,V={sc:40,ox:0,oy:0},u=0,u2=0,dir=1,play=true,last=0;
+const X=x=>W/2+V.ox+x*V.sc,Y=y=>H/2+V.oy-y*V.sc,col=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function fit(){const xs=[],ys=[];S.path.pts.forEach(p=>{xs.push(p.x);ys.push(p.y)});Object.values(S.pts).forEach(p=>{xs.push(p[0]);ys.push(p[1])});
+ (S.exp&&S.exp.pts||[]).forEach(q=>{xs.push(q.p[0]);ys.push(q.p[1])});
+ // 也考虑派生点轨迹，避免对称点跑出视野
+ (S.der||[]).forEach(d=>{(d.trail||[]).forEach(q=>{if(q.p&&isFinite(q.p[0])&&isFinite(q.p[1])&&Math.abs(q.p[0])<1e4&&Math.abs(q.p[1])<1e4){xs.push(q.p[0]);ys.push(q.p[1])}})});
+ const pd=S.fold?Math.max(Math.max(...xs)-Math.min(...xs),Math.max(...ys)-Math.min(...ys))*.45:0,x0=Math.min(...xs)-pd,x1=Math.max(...xs)+pd,y0=Math.min(...ys)-pd,y1=Math.max(...ys)+pd;
+ V.sc=Math.min(W/Math.max((x1-x0)*1.4,1),H/Math.max((y1-y0)*1.4,1));V.ox=-(x0+x1)/2*V.sc;V.oy=(y0+y1)/2*V.sc}
+function at(uu){const P=S.path.pts,n=P.length,t=uu*S.path.L;let lo=0,hi=n-1;while(lo<hi){const m=(lo+hi+1)>>1;if(P[m].s<=t)lo=m;else hi=m-1}
+ const a=P[lo],nx=lo+1<n,b=nx?P[lo+1]:S.path.closed?P[0]:a,d=(nx?P[lo+1].s:S.path.L)-a.s,k=d>1e-12&&!b.b?(t-a.s)/d:0;
+ return[a.x+(b.x-a.x)*k,a.y+(b.y-a.y)*k]}
+function draw(){
+ if(!W)return;g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,W,H);
+ const fg=col('--fg'),mu=col('--mu'),ac=col('--ac'),gr=col('--gr');
+ g.font='12px ui-monospace,Menlo,monospace';
+ const raw=60/V.sc,pw=10**Math.floor(Math.log10(raw)),st=[1,2,5,10].map(m=>m*pw).find(v=>v>=raw);
+ const xa=(-W/2-V.ox)/V.sc,xb=(W/2-V.ox)/V.sc,ya=(V.oy-H/2)/V.sc,yb=(V.oy+H/2)/V.sc;
+ g.lineWidth=1;g.fillStyle=mu;
+ for(let x=Math.ceil(xa/st)*st;x<=xb;x+=st){g.strokeStyle=Math.abs(x)<st/2?mu:gr;g.beginPath();g.moveTo(X(x),0);g.lineTo(X(x),H);g.stroke();if(Math.abs(x)>st/2)g.fillText(f3(x),X(x)+3,Math.min(Math.max(Y(0)+13,13),H-4))}
+ for(let y=Math.ceil(ya/st)*st;y<=yb;y+=st){g.strokeStyle=Math.abs(y)<st/2?mu:gr;g.beginPath();g.moveTo(0,Y(y));g.lineTo(W,Y(y));g.stroke();if(Math.abs(y)>st/2)g.fillText(f3(y),Math.min(Math.max(X(0)+4,2),W-30),Y(y)-3)}
+ if(!S)return;
+ const tr=(arr,gp)=>{g.beginPath();arr.forEach((q,i)=>{const x=gp?X(q.p[0]):X(q.x),y=gp?Y(q.p[1]):Y(q.y);q.b||!i?g.moveTo(x,y):g.lineTo(x,y)});};
+ S.der.filter(d=>d.tr).forEach(d=>{tr(d.trail,1);g.strokeStyle=col('--or');g.lineWidth=2;g.setLineDash([6,4]);g.stroke();g.setLineDash([])});
+ if(S.ctx){g.beginPath();S.ctx.forEach((q,i)=>i?g.lineTo(X(q[0]),Y(q[1])):g.moveTo(X(q[0]),Y(q[1])));g.closePath();g.strokeStyle=mu;g.lineWidth=1.5;g.stroke()}
+ (S.extra||[]).forEach(w=>{g.beginPath();[...w].forEach((c,i)=>{const q=S.pts[c]||S.G(c,at(u));i?g.lineTo(X(q[0]),Y(q[1])):g.moveTo(X(q[0]),Y(q[1]))});g.closePath();g.fillStyle=col('--or');g.globalAlpha=.12;g.fill();g.globalAlpha=1;g.strokeStyle=col('--or');g.lineWidth=2;g.stroke()});
+ tr(S.path.pts);if(S.path.closed)g.closePath();g.strokeStyle=ac;g.lineWidth=2.5;g.stroke();
+ const p=at(u),p2=S.mv2?at(u2):null,Gp=n=>S.G(n,p,p2);
+ g.strokeStyle=mu;g.lineWidth=1.5;g.setLineDash([5,4]);
+ [...S.ob.links,...S.der.flatMap(d=>d.links)].forEach(([a,b])=>{g.beginPath();g.moveTo(X(Gp(a)[0]),Y(Gp(a)[1]));g.lineTo(X(Gp(b)[0]),Y(Gp(b)[1]));g.stroke()});
+ g.setLineDash([]);
+ if(S.exp){const au=col('--au'),Z=a=>typeof a=='string'?Gp(a):a;
+  if(S.exp.circ){g.beginPath();g.arc(X(S.exp.circ.c[0]),Y(S.exp.circ.c[1]),S.exp.circ.r*V.sc,0,7);g.strokeStyle=au;g.globalAlpha=.35;g.lineWidth=1.5;g.setLineDash([2,4]);g.stroke();g.globalAlpha=1;g.setLineDash([])}
+  g.strokeStyle=au;g.lineWidth=2.8;S.exp.aux.forEach(([a,b])=>{const A=Z(a),B=Z(b);g.beginPath();g.moveTo(X(A[0]),Y(A[1]));g.lineTo(X(B[0]),Y(B[1]));g.stroke()})}
+ if(S.fold){const F=S.fold,Xp=Gp(F.X),Yp=Gp(F.Y),L=[];
+  F.V.forEach((c,i)=>{const nx=F.V[(i+1)%F.V.length];L.push(c);[F.X,F.Y].forEach(w=>{const q=F.sd[w];if(q&&(q[0]==c&&q[1]==nx||q[1]==c&&q[0]==nx))L.push(w)})});
+  const i0=L.indexOf(F.X),ar=L.slice(i0).concat(L.slice(0,i0)),j=ar.indexOf(F.Y);
+  let arc=ar.slice(0,j+1);if(!arc.includes(F.P))arc=ar.slice(j).concat([ar[0]]);
+  const dx=Yp[0]-Xp[0],dy=Yp[1]-Xp[1],dd=dx*dx+dy*dy||1e-12,rf=q=>{const t=((q[0]-Xp[0])*dx+(q[1]-Xp[1])*dy)/dd,mx=Xp[0]+t*dx,my=Xp[1]+t*dy;return[2*mx-q[0],2*my-q[1]]},R=arc.map(c=>rf(Gp(c))),au=col('--au');
+  g.beginPath();R.forEach((q,i)=>i?g.lineTo(X(q[0]),Y(q[1])):g.moveTo(X(q[0]),Y(q[1])));g.closePath();g.fillStyle=au;g.globalAlpha=.12;g.fill();g.globalAlpha=1;
+  g.strokeStyle=au;g.lineWidth=2;g.setLineDash([6,4]);g.stroke();g.setLineDash([]);
+  g.fillStyle=au;arc.forEach((c,i)=>{if(c!=F.X&&c!=F.Y)g.fillText(c+"'",X(R[i][0])-18,Y(R[i][1])+16)})}
+ {const k=S.ob.k;if(k){
+  if(k.polys)k.polys.forEach((w,i)=>{g.beginPath();[...w].forEach((c,j)=>{const q=Gp(c);j?g.lineTo(X(q[0]),Y(q[1])):g.moveTo(X(q[0]),Y(q[1]))});g.closePath();g.fillStyle=col(i?'--or':'--ac');g.globalAlpha=.16;g.fill();g.globalAlpha=1});
+  if(k.t=='angle'){const[A,B,C]=k.n.map(n=>Gp(n)),a1=Math.atan2(A[1]-B[1],A[0]-B[0]);let d=Math.atan2(C[1]-B[1],C[0]-B[0])-a1;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;
+   g.strokeStyle=col('--mx');g.lineWidth=2.5;[A,C].forEach(q=>{g.beginPath();g.moveTo(X(B[0]),Y(B[1]));g.lineTo(X(q[0]),Y(q[1]));g.stroke()});g.beginPath();g.arc(X(B[0]),Y(B[1]),26,-a1,-a1-d,d>0);g.stroke()}}}
+ if(S.stat){g.strokeStyle=ac;g.lineWidth=3.5;g.setLineDash([]);S.ob.links.forEach(([a,b])=>{const A=Gp(a),B=Gp(b);g.beginPath();g.moveTo(X(A[0]),Y(A[1]));g.lineTo(X(B[0]),Y(B[1]));g.stroke()})}
+ g.font='600 14px "PingFang SC",system-ui,sans-serif';
+ const dot=(q,c,r,l)=>{g.fillStyle=c;g.beginPath();g.arc(X(q[0]),Y(q[1]),r,0,7);g.fill();if(l){g.fillStyle=fg;g.fillText(l,X(q[0])+r+3,Y(q[1])-r-2)}};
+ if(S.ex.dual){
+  // 双动点最值标记
+  [['mx','最大','--mx'],['mn','最小','--mn']].forEach(([k,t,c])=>S.ex[k].forEach(pos=>{
+   g.strokeStyle=col(c);g.lineWidth=2.5;
+   g.beginPath();g.arc(X(pos.p1[0]),Y(pos.p1[1]),9,0,7);g.stroke();
+   g.beginPath();g.arc(X(pos.p2[0]),Y(pos.p2[1]),9,0,7);g.stroke();
+   g.fillStyle=col(c);g.fillText(t+' '+fxs(pos.v),X(pos.p1[0])+12,Y(pos.p1[1])+5);
+  }));
+ }else{
+  [['mx','最大','--mx'],['mn','最小','--mn']].forEach(([k,t,c])=>S.ex[k].forEach(i=>{const R=S.ex.rf[i],q={x:R.p[0],y:R.p[1]};g.strokeStyle=col(c);g.lineWidth=2.5;g.beginPath();g.arc(X(q.x),Y(q.y),9,0,7);g.stroke();g.fillStyle=col(c);g.fillText(t+' '+fxs(S.ex.rf[i].v),X(q.x)+12,Y(q.y)+5)}));
+ }
+ for(const n in S.pts)dot(S.pts[n],fg,4,n);
+ if(S.exp&&S.exp.pts)S.exp.pts.forEach(q=>dot(q.p,col('--au'),5,q.n));
+ S.der.forEach(d=>dot(Gp(d.n),col('--or'),5,d.n));
+ if(!S.stat){g.fillStyle=col('--bg');g.beginPath();g.arc(X(p[0]),Y(p[1]),9,0,7);g.fill();dot(p,ac,6,S.mv)}
+ if(p2){g.fillStyle=col('--bg');g.beginPath();g.arc(X(p2[0]),Y(p2[1]),9,0,7);g.fill();dot(p2,col('--or'),6,S.mv2)}
+ {const v=S.ob.f(p,p2),k=S.mx-S.mn<1e-9||Object.values(S.ex.rf||{}).some(r=>Math.abs(r.v-v)<1e-9);$('rd').innerHTML=(S.tm?'t = '+f3(u*S.tm.T)+' 秒　':'')+esc(S.ob.name)+' = '+(k?(S.mx-S.mn<1e-9?(S.cx=S.cx||fxe(S.mx)):fxe(v)):f3(v))}}
+function size(){const r=$('st').getBoundingClientRect();dpr=devicePixelRatio||1;W=r.width;H=r.height;cv.width=W*dpr;cv.height=H*dpr;if(S&&!V.set){fit()}draw()}
+new ResizeObserver(size).observe($('st'));
+// ---- 结果面板 ----
+function report(){
+ const E=S.ex;
+ let rows='';const Tt=S.tm?S.tm.T:1,trow=(S.roots&&S.roots.length)?S.roots.map(r=>'<button class="x mn" data-u="'+r.u+'">'+(r.lab?esc(r.lab)+'　':'')+(S.tm?'t = '+fxh(r.u*Tt)+' 秒　':'')+S.mv+'('+fxe(r.p[0])+', '+fxe(r.p[1])+')</button>').join(''):'<p><b>没有满足条件的位置</b>：目标量的取值范围是 '+fxe(S.mn)+' ≤ '+esc(S.ob.multi?'目标量':S.ob.name)+' ≤ '+fxe(S.mx)+'。</p>',
+  crow=S.ob.k&&S.ob.k.t=='coord'?(()=>{const q=S.G(S.ob.k.n,[S.path.pts[0].x,S.path.pts[0].y]);return'<p>结果：<b>'+esc(S.ob.k.n)+'</b>('+fxe(q[0])+', '+fxe(q[1])+')</p>'})():'';
+ if(E.dual){
+  rows=E.mx.map(pos=>'<button class="x mx" data-u1="'+pos.u1+'" data-u2="'+pos.u2+'">最大值 <b>'+fxh(pos.v)+'</b>　'+S.mv+'('+f3(pos.p1[0])+','+f3(pos.p1[1])+') '+S.mv2+'('+f3(pos.p2[0])+','+f3(pos.p2[1])+')</button>').join('')+
+       E.mn.map(pos=>'<button class="x mn" data-u1="'+pos.u1+'" data-u2="'+pos.u2+'">最小值 <b>'+fxh(pos.v)+'</b>　'+S.mv+'('+f3(pos.p1[0])+','+f3(pos.p1[1])+') '+S.mv2+'('+f3(pos.p2[0])+','+f3(pos.p2[1])+')</button>').join('');
+ }else{
+  const RW=(c,t,j)=>{const r=E.rf[j];return'<button class="x '+c+'" data-u="'+r.u+'">'+t+'值 <b>'+fxh(r.v)+'</b>　'+S.mv+'('+fxe(r.p[0])+', '+fxe(r.p[1])+')</button>'};
+  {const o=S.osrc||'',hM=/最大/.test(o),hn=/最小/.test(o);rows=(hM||!hn?E.mx.map(j=>RW('mx','最大',j)).join(''):'')+(hn||!hM?E.mn.map(j=>RW('mn','最小',j)).join(''):'')}
+ }
+ const mode=S.stat?'无动点，直接计算':S.mv2?'点'+esc(S.mv)+'与'+esc(S.mv2)+'沿'+esc(S.desc)+'独立运动（双参数）':'点'+esc(S.mv)+'沿'+esc(S.desc)+'运动';
+ $('rs').innerHTML='<p><span class="k">运动方式　</span>'+mode+'</p><p><span class="k">目标量　</span>'+esc(S.ob.name)+'</p>'+
+  (S.tgs?trow:S.ob.k&&S.ob.k.t=='coord'?crow:E.mx.length||E.dual?rows:(S.stat?'<p>结果：<b>'+esc(S.ob.name)+'</b> = '+fxh(S.mx)+'</p>':'<p>该目标量在运动过程中<b>恒为定值 '+fxh(S.mx)+'</b>。</p>'))+
+  (S.der.some(d=>d.tr)&&!S.stat?'<p><span class="k">轨迹　</span>橙色虚线是点'+esc(S.der.filter(d=>d.tr).map(d=>d.n).join('、'))+'的运动轨迹</p>':'')+
+  (S.note?'<p class="k">'+esc(S.note)+'</p>':'')+(S.stat?'':'<p class="k">点击最值可跳到对应位置；拖动画布平移，滚轮或＋－缩放。</p>')+(S.exp?'<details open><summary><b>计算过程</b></summary><ol class="pc">'+S.exp.H.map(x=>'<li>'+x+'</li>').join('')+'</ol></details>':'')}
+function run0(){
+ try{S=parse($('tx').value);try{S.exp=explain(S)}catch(e){S.exp=null;console.warn(e)}V.set=0;fit();u=0;u2=0;dir=1;play=true;$('pl').textContent='⏸';
+  // 显示/隐藏副点滑块
+  const has2=!!S.mv2;document.querySelector('.ct').style.display=S.stat?'none':'';play=!S.stat;$('pr2').style.display=$('lb2').style.display=has2?'':'none';
+  $('pr').value=0;$('pr2').value=0;report();draw();return true}
+ catch(e){$('rs').innerHTML='<p class="e"><b>'+esc(e.message)+'</b></p><p class="k">试试点上面的示例，看看描述的写法。</p>';return false}}
+async function glm(parts){const r=await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+$('ak').value.trim()},body:JSON.stringify({model:$('md').value.trim()||'glm-4.1v-thinking-flash',max_tokens:8192,messages:[{role:'user',content:parts}]})}),j=await r.json();
+ if(!r.ok)throw Error((j.error&&j.error.message)||('请求失败 '+r.status));let tx=(j.choices&&j.choices[0]&&j.choices[0].message.content)||'';const bx=tx.match(/<\|begin_of_box\|>([\s\S]*?)<\|end_of_box\|>/);if(bx)tx=bx[1];
+ const m=tx.match(/\[\s*\{[\s\S]*\}\s*\]/);if(!m)throw Error('AI 没有返回可用的结果');return JSON.parse(m[0])}
+let aiBusy=0;
+async function run(){const ok=run0(),weak=ok&&S&&/^没有指定求值目标/.test(S.note||'');if((ok&&!weak)||aiBusy||!$('ak').value.trim())return;aiBusy=1;
+ const raw=$('tx').value,ps=$('ps');ps.className='k';ps.textContent='本地规则没完全读懂这句话，正在请 AI 改写成规范说法…';
+ try{const L=await glm([{type:'text',text:SYS+'\n\n下面是一道题的文字（没有配图，图中信息请按文字推断），请改写成规范描述，只输出JSON数组：\n'+raw}]);
+  $('pls').innerHTML='';L.forEach(q=>{const b=document.createElement('button');b.textContent=q.title+'：'+q.text;b.onclick=()=>{$('tx').value=q.text;run0()};$('pls').append(b)});
+  ps.textContent='AI 已改写成规范描述，文本框里还可以再改：';if(L[0]){$('tx').value=L[0].text;run0()}}
+ catch(e){ps.className='e';ps.textContent='AI 改写失败：'+e.message}aiBusy=0}
+$('go').onclick=run;
+$('rs').onclick=e=>{const b=e.target.closest('[data-u],[data-u1]');if(b){
+  if(b.dataset.u1!==undefined){u=+b.dataset.u1;u2=+b.dataset.u2;$('pr').value=u*1000;$('pr2').value=u2*1000}
+  else{u=+b.dataset.u;$('pr').value=u*1000}
+  play=false;$('pl').textContent='▶';draw()}};
+$('pl').onclick=()=>{play=!play;$('pl').textContent=play?'⏸':'▶'};
+$('pr').oninput=e=>{u=Math.min(e.target.value/1000,.9999);play=false;$('pl').textContent='▶';draw()};
+$('pr2').oninput=e=>{u2=Math.min(e.target.value/1000,.9999);play=false;$('pl').textContent='▶';draw()};
+const EX=[
+ '点P在圆x²+y²=4上运动，A(3,0)，求PA的最大值和最小值',
+ '点P在椭圆x²/9+y²/4=1上运动，A(2,0)，求PA的最值',
+ '点P在线段AB上运动，A(0,0)，B(6,0)，C(2,4)，求PC的最小值',
+ '点P在抛物线y=x²上运动，A(0,3)，M为线段AP的中点，求PA的最小值',
+ 'x=3cosθ，y=2sinθ，求x+y的最大值和最小值',
+ 'r=2(1+cosθ)，求y的最大值',
+ '点P在正方形ABCD的边上运动，边长为4，E(6,2)，求PE的最值',
+ '在三角形ABC中，AB=3，AC=4，BC=5，P为边BC上一动点，PE⊥AB于E，PF⊥AC于F，M为EF的中点，求AM最小值',
+ '点P在圆x²+y²=9上运动，A(0,0)，B(4,0)，Q为P关于直线AB的对称点，求QA的最小值',
+ '点P在线段AB上运动，A(0,0)，B(6,0)，C(3,4)，把P关于AC折叠得到Q，求BQ的最小值',
+ '点P、Q为圆x²+y²=4上的两动点，求PQ的最大值',
+ '正方形ABCD边长为4，点E在边BC上，点F在边CD上，BE=CF，求BF+DE的最小值',
+ '三角形ABC中，A(0,4)，B(-3,0)，C(3,0)，点P在线段BC上运动，PE⊥AB于E，PF⊥AC于F，求PE+PF的定值',
+ '在菱形ABCD中，连接AB，角A=60°，点M是AD的中点，点N是线段AB上一个动点，三角形PMN和三角形AMN关于MN对称，连接PB，求PB最小值 A（0，0），D（1，√3）',
+ '在三角形ABC中，角C=90°，AB=5，AC=4，求BC的定值',
+ '在矩形ABCD中，AB=3，AD=9，E是AD上一点，F是BC上一点，将此矩形沿EF折叠，使点D与点B重合，B(0,0)A(0,3)C(9,0)D(9,3)，求三角形ABE的面积',
+ '在直角三角形ABC中，∠ACB=90°，AC=4，BC=3，点D是三角形ABC内部一点，满足CD=2，求AD+2/3×BD的最小值',
+ '在矩形ABCD中，AB=3，AD=9，E是AD上一点，F是BC上一点，将此矩形沿EF折叠，使点D与点B重合，B(0,0)A(0,3)C(9,0)D(9,3)，求∠AEB的度数',
+ '在三角形ABC中，A(0,0)，B(6,0)，C(2,4)，D是AB的中点，E是AC的中点，求△ADE与△ABC的面积比',
+ '在边长为12cm的等边三角形ABC中，点P从点A开始沿AB边向点B以每秒1cm的速度移动，点Q从点B开始沿BC边向点C以每秒2cm的速度移动，P、Q同时出发，其中一点到达终点即停止，求经过6秒后BP、BQ的长',
+ '在边长为12cm的等边三角形ABC中，点P从点A开始沿AB边向点B以每秒1cm的速度移动，点Q从点B开始沿BC边向点C以每秒2cm的速度移动，P、Q同时出发，其中一点到达终点即停止，求△BPQ是直角三角形时的时间',
+ '在边长为12cm的等边三角形ABC中，点P从点A开始沿AB边向点B以每秒1cm的速度移动，点Q从点B开始沿BC边向点C以每秒2cm的速度移动，P、Q同时出发，其中一点到达终点即停止，求△BPQ的面积等于10√3时的时间',
+ '一次函数y=-2x+3的图象交x轴于点A，交y轴于点B，点P在线段AB上运动，PC⊥OA于C，PD⊥OB于D，求矩形OCPD的面积为1时点P的位置',
+ '一次函数y=-2x+3的图象交x轴于点A，交y轴于点B，点P在线段AB上运动，PC⊥OA于C，PD⊥OB于D，是否存在点P，使矩形OCPD的面积为1.5',
+ '点O为平面直角坐标系的原点，边长为4的菱形OABC的一边OA与x轴的正半轴重合，∠COA=60度，求B点的坐标',
+ '点O为平面直角坐标系的原点，边长为4的菱形OABC的一边OA与x轴的正半轴重合，∠COA=60度，过点C的直线将菱形OABC分成面积比为1:3的两部分，求该直线的解析式',
+ '在菱形ABCD中，AB=2√10，BD=4，对角线AC、BD交于点O，CE⊥AB交AB的延长线于点E，连接OE，求OE的长',
+ '如图，已知菱形ABCD，∠B=60°，AB=4，则以AC为边的正方形AFEC的周长为',
+ '在三角形ABC中，AB=AC，∠BAC=30°，BC=2；求△ABC的面积的定值。',
+ '在直角三角形ABC中，∠BAC=90°，AB=4，AC=6√3；点D在边BC的下方，使得三角形BCD为等边三角形。求线段AD的长度。',
+ '点O为原点，OM、ON为互相垂直的射线，∠MON=90°。正方形ABCD的边长为4，点C在射线OM上，点D在射线ON上。求OA的最大值。',
+ '在三角形ABP中，∠APB=45°，AB=8，求三角形ABP面积的最大值',
+ '矩形ABCD中，AB=7，AD=5，点P在边DC上，点Q在边BC上，DP=BQ，求AP+DQ的最小值',
+ '在三角形ABC中，∠B=90°，AB=2，∠C=30°，点P是三角形ABC内部一点，求PA+PB+PC的最小值'
+];
+EX.forEach((t,i)=>{const b=document.createElement('button');b.textContent=['圆上的距离','椭圆上的距离','线段上最短距离','抛物线与中点','参数方程','心形线','正方形边上','垂足与中点','对称点轨迹','折叠对称','双动点PQ','正方形等长约束','定值：垂线段和','菱形折叠','无动点：直角三角形','折叠：D与B重合','阿氏圆：AD+2/3BD','折叠求角','中点：面积比','动点P、Q：经过6秒','动点P、Q：直角三角形','动点P、Q：面积10√3','一次函数：矩形面积=1','一次函数：面积=1.5？','菱形：求B坐标','菱形：分面积1:3的直线','菱形：求OE','菱形+正方形周长','等腰：面积定值','等边：求AD','滑动正方形OA最大','定弦定角面积','矩形：AP+DQ','费马点'][i];b.onclick=()=>{$('tx').value=t;run()};$('ch').append(b)});
+$('tx').value=EX[0];$('tx').placeholder='用一句话描述：点在哪个图形上运动，已知点/中点/垂足/对称点，求什么（距离、面积、表达式等）';
+$('tx').addEventListener('keydown',e=>{if(e.key=='Enter'&&(e.ctrlKey||e.metaKey))run()});
+
+// ---- 拍照/相册识别：把题目文字与几何图一起交给视觉模型，转成本工具能解的规范描述 ----
+const LS=(k,v)=>{try{if(v===undefined)return localStorage.getItem(k)||'';localStorage.setItem(k,v)}catch(e){return ''}};
+$('ak').value=LS('zhipuKey');$('md').value=LS('zhipuModel')||'glm-4.1v-thinking-flash';
+$('ak').onchange=()=>LS('zhipuKey',$('ak').value.trim());$('md').onchange=()=>LS('zhipuModel',$('md').value.trim());
+$('cam').onclick=()=>$('f1').click();$('alb').onclick=()=>$('f2').click();
+const SYS=`你是初中几何题录入助手。图片里有一道或多道题，并配有几何图。请把每道题的每个小问各改写成一段“规范描述”，输出时必须把图中读到的信息（点的坐标、点的位置、边长、角度、速度、方程）全部写进文字，做到不看图也能作答。只能使用下面的句式：
+点坐标：A(0,0)。三角形：在三角形ABC中，AB=3，AC=4，BC=5；∠ACB=90°；AB=AC，∠BAC=40°；等边三角形ABC，边长为12。矩形/正方形ABCD，边长为4，或AB=3，AD=9。菱形ABCD（或OABC），边长为4，角A=60°，或 AB=2√10，BD=4。以AC为边作正方形AFEC（字母按连接顺序写）。平面直角坐标系里的原点写“点O为原点”。
+动点：点P在线段AB上运动；点P在圆x²+y²=4上运动；点D是三角形ABC内部一点，满足CD=2；点P从点A开始沿AB边向点B以每秒1cm的速度移动，点Q从点B开始沿BC边向点C以每秒2cm的速度移动；一次函数y=-2x+3的图象交x轴于点A，交y轴于点B。
+派生点：M为AB的中点；PE⊥AB于E；CE⊥AB交AB的延长线于点E；对角线AC、BD交于点O；Q是P关于直线AB的对称点；沿EF折叠，使点D与点B重合，E是AD上一点，F是BC上一点（并写出各点坐标）；过点C的直线将菱形OABC分成面积比为1:3的两部分。
+求什么：求PA的最小值；求正方形AFEC的周长；求△ABC的周长；求∠ABC的度数；求△BPQ的面积；求△ADE与△ABC的面积比；求点B的坐标；求△BPQ的面积等于10√3时的时间；求△BPQ是直角三角形时的时间；求矩形OCPD的面积为1时点P的位置；求经过6秒后BP、BQ的长；求OE的长；求该直线的解析式。
+更多句式：点O为原点，OM、ON为互相垂直的射线，正方形ABCD的边长为4，点C在射线OM上，点D在射线ON上，求OA的最大值。矩形ABCD中，AB=7，AD=5，点P在边DC上，点Q在边BC上，DP=BQ，求AP+DQ的最小值。在三角形ABC中，∠B=90°，AB=2，∠C=30°，点P是三角形ABC内部一点，求PA+PB+PC的最小值。点D在BC下方，等边三角形BCD（图中△BCD三边看起来相等时必须写等边）。在三角形ABP中，∠APB=45°，AB=8，求三角形ABP面积的最大值。
+只输出JSON数组，每项形如{"title":"题号和小问，如 49(2)","text":"规范描述"}，不要输出任何别的文字。证明题把已知条件和作图写成规范描述，最后写“求证……”。`;
+function shrink(file){return new Promise((ok,no)=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{const k=Math.min(1,1568/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',.88))};im.onerror=()=>no(Error('图片读取失败'));im.src=u})}
+async function recog(file){const ps=$('ps'),key=$('ak').value.trim();ps.className='k';ps.textContent='正在识别题目和几何图…';$('pls').innerHTML='';
+ try{const url=await shrink(file);$('pv').src=url;$('pv').hidden=false;
+  const r=await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+key},body:JSON.stringify({model:$('md').value.trim()||'glm-4.1v-thinking-flash',max_tokens:8192,messages:[{role:'user',content:[{type:'image_url',image_url:{url:url}},{type:'text',text:SYS+'\n\n请识别图片里的题目和几何图，按要求输出JSON数组。'}]}]})});
+  const j=await r.json();if(!r.ok)throw Error((j.error&&j.error.message)||('请求失败 '+r.status));
+  let tx=(j.choices&&j.choices[0]&&j.choices[0].message.content)||'';const bx=tx.match(/<\|begin_of_box\|>([\s\S]*?)<\|end_of_box\|>/);if(bx)tx=bx[1];
+  const m=tx.match(/\[\s*\{[\s\S]*\}\s*\]/);if(!m)throw Error('没有识别到题目');const L=JSON.parse(m[0]);
+  ps.textContent='识别到 '+L.length+' 个问题。点任意一个即可求解，也可以先在文本框里改一改再点“生成并演示”：';
+  L.forEach(q=>{const b=document.createElement('button');b.textContent=q.title+'：'+q.text;b.onclick=()=>{$('tx').value=q.text;run()};$('pls').append(b)});if(L[0]){$('tx').value=L[0].text;run()}
+ }catch(e){ps.className='e';ps.textContent='识别失败：'+e.message+(key?'':'（还没填 API Key：展开下方“识图设置”填入后再试）')}}
+$('f1').onchange=$('f2').onchange=e=>{const f=e.target.files[0];if(f)recog(f);e.target.value=''};
+// 平移、缩放
+let dg=null;const zoom=(k,cx=W/2,cy=H/2)=>{const wx=(cx-W/2-V.ox)/V.sc,wy=(H/2+V.oy-cy)/V.sc;V.sc*=k;V.ox=cx-W/2-wx*V.sc;V.oy=cy-H/2+wy*V.sc;V.set=1;draw()};
+cv.onpointerdown=e=>{dg=[e.clientX,e.clientY];cv.setPointerCapture(e.pointerId);cv.style.cursor='grabbing'};
+cv.onpointermove=e=>{if(!dg)return;V.ox+=e.clientX-dg[0];V.oy+=e.clientY-dg[1];dg=[e.clientX,e.clientY];V.set=1;draw()};
+cv.onpointerup=()=>{dg=null;cv.style.cursor='grab'};
+cv.onwheel=e=>{e.preventDefault();const r=cv.getBoundingClientRect();zoom(e.deltaY<0?1.15:1/1.15,e.clientX-r.left,e.clientY-r.top)};
+$('zi').onclick=()=>zoom(1.3);$('zo').onclick=()=>zoom(1/1.3);$('zf').onclick=()=>{if(S){V.set=0;fit();draw()}};
+// 动画循环（沿弧长匀速；闭合曲线循环，开放曲线往返）
+function loop(t){const dt=Math.min((t-last)/1000,.1);last=t;
+ if(S&&play){u+=dir*dt*$('sp').value/8;if(S.path.closed)u=(u%1+1)%1;else if(u>=1){u=1;dir=-1}else if(u<=0){u=0;dir=1}$('pr').value=u*1000;draw()}
+ requestAnimationFrame(loop)}
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change',draw);
+run();requestAnimationFrame(loop);
+</script></body></html>
